@@ -92,6 +92,14 @@ test("l'accueil répond, avec ses en-têtes de sécurité", async () => {
   ferme();
 });
 
+test('HEAD est traité comme GET, sans corps', async () => {
+  const { port, ferme } = await demarre();
+  const r = await requete(port, 'HEAD', '/');
+  assert.equal(r.status, 200);
+  assert.equal(r.corps, '');
+  ferme();
+});
+
 test('parcours complet : dépôt, page, soutiens dédupliqués, signalement', async () => {
   const { port, ferme } = await demarre();
 

@@ -195,7 +195,10 @@ ${urls}
   async function traite(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'local'}`);
     const chemin = url.pathname;
-    const methode = req.method ?? 'GET';
+    // HEAD se traite comme GET : les outils de suivi sonnent en HEAD et un
+    // 404 les aurait déclenchés à tort. Node retire le corps d'une réponse
+    // HEAD tout seul (_hasBody), on n'envoie donc rien en trop.
+    const methode = req.method === 'HEAD' ? 'GET' : req.method ?? 'GET';
     const ip = ipDe(req);
     const empreinte = empreinteIp(ip, sel, new Date(maintenant()));
     const veJ = veutJson(req);
