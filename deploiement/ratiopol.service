@@ -1,0 +1,28 @@
+# deploiement/ratiopol.service — l'unité systemd du serveur RatioPol.
+# À poser dans /etc/systemd/system/ par installer-vps.sh.
+# La configuration (secrets, base) vit dans /etc/ratiopol.env — JAMAIS ici.
+
+[Unit]
+Description=RatioPol — serveur (idées politiques concrètes)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=debian
+WorkingDirectory=/opt/ratiopol/actuel
+EnvironmentFile=/etc/ratiopol.env
+ExecStart=/usr/bin/node dist/serveur.mjs
+Restart=always
+RestartSec=3
+
+# Sobre : un petit site n'a pas besoin de plus.
+MemoryMax=512M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

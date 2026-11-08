@@ -1,0 +1,21 @@
+{
+  "name": "ratiopol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "RatioPol — idées politiques concrètes, France. Site et serveur.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node --test test/gabarit.test.mjs test/http.test.mjs",
+    "test:pg": "RP_PG_URL=postgres://localhost/ratiopol_test node build.mjs && node --test test/",
+    "migrer": "node base/migrate.mjs"
+  },
+  "dependencies": {
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.0.0"
+  }
+}

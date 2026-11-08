@@ -1,0 +1,119 @@
+/* =============================================================================
+   RatioPol — JETONS INVARIANTS
+   Ce qui ne change pas entre thème clair et sombre : espacement, typographie,
+   rayons. Les couleurs vivent en fin de fichier en deux jeux (clair par
+   défaut, sombre par prefers-color-scheme), mêmes noms.
+
+   Convention : --r-<rôle>. Préfixe `r` pour RatioPol.
+   Règle : aucune valeur littérale (px, hex, ms) dans page.css. Si un jeton
+   manque, il se DEMANDE — il ne s'improvise pas.
+   (Pile système inspirée de Klatcho/web/src/styles/jetons.css : zéro police
+   téléchargée, le premier écran arrive sans FOIT ni octet réseau.)
+   ========================================================================== */
+
+:root {
+  /* 1. ESPACEMENT — base 4 px, en rem pour suivre le zoom navigateur. */
+  --r-esp-1p: 1px;
+  --r-esp-05: 0.125rem; /*  2 px */
+  --r-esp-1: 0.25rem;   /*  4 px */
+  --r-esp-2: 0.5rem;    /*  8 px */
+  --r-esp-3: 0.75rem;   /* 12 px */
+  --r-esp-4: 1rem;      /* 16 px */
+  --r-esp-5: 1.25rem;   /* 20 px */
+  --r-esp-6: 1.5rem;    /* 24 px */
+  --r-esp-8: 2rem;      /* 32 px */
+  --r-esp-10: 2.5rem;   /* 40 px */
+  --r-esp-12: 3rem;     /* 48 px */
+  --r-esp-16: 4rem;     /* 64 px */
+  --r-esp-20: 5rem;     /* 80 px */
+  --r-esp-24: 6rem;     /* 96 px */
+
+  /* 2. TYPOGRAPHIE — deux piles système : une SERIF de lecture pour le
+     corps éditorial (les idées se lisent en continu), une sans pour
+     l'habillage. Zéro police téléchargée. */
+  --r-police-lecture: 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    'Book Antiqua', Georgia, 'Times New Roman', serif;
+  --r-police-interface: system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', 'Noto Sans', 'Liberation Sans', Arial, sans-serif;
+  --r-police-mono: ui-monospace, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', 'DejaVu Sans Mono', monospace;
+
+  /* Échelle éditoriale : des paliers serrés en bas, un vrai bond pour le
+     titre de page. clamp() pour la fluidité mobile → grand écran. */
+  --r-txt-xs: 0.75rem;      /* 12 px — étiquettes, majuscules */
+  --r-txt-xs-h: 1.125rem;
+  --r-txt-sm: 0.875rem;     /* 14 px — méta, interface secondaire */
+  --r-txt-sm-h: 1.25rem;
+  --r-txt-corps: 1.0625rem; /* 17 px — corps de lecture des idées */
+  --r-txt-corps-h: 1.65rem; /* ≈ 1,55 : les textes longs s'aèrent */
+  --r-txt-lg: 1.25rem;      /* 20 px */
+  --r-txt-lg-h: 1.75rem;
+  --r-txt-xl: clamp(1.375rem, 1.2rem + 0.9vw, 1.75rem);   /* ≤ 28 px */
+  --r-txt-xl-h: 1.25;
+  --r-txt-2xl: clamp(1.75rem, 1.4rem + 1.8vw, 2.5rem);    /* ≤ 40 px */
+  --r-txt-2xl-h: 1.15;
+  --r-txt-3xl: clamp(2.25rem, 1.6rem + 3.2vw, 3.75rem);   /* ≤ 60 px */
+  --r-txt-3xl-h: 1.05;
+
+  --r-graisse-normale: 400;
+  --r-graisse-moyenne: 500;
+  --r-graisse-appuyee: 600;
+  --r-graisse-forte: 700;
+
+  --r-interlettre-titre: -0.015em;
+  --r-interlettre-majuscules: 0.08em;
+
+  /* 3. RAYONS — sobres : l'éditorial vit à angles droits ou presque. */
+  --r-rayon-0: 0;
+  --r-rayon-xs: 0.1875rem; /*  3 px */
+  --r-rayon-sm: 0.3125rem; /*  5 px — champs */
+  --r-rayon-md: 0.5rem;    /*  8 px — boutons */
+  --r-rayon-plein: 9999px;
+
+  /* 4. MOUVEMENT */
+  --r-duree-instant: 90ms;
+  --r-duree-courte: 160ms;
+  --r-courbe-sortie: cubic-bezier(0.2, 0.6, 0.25, 1);
+
+  /* 5. STRUCTURE — la colonne de lecture ne dépasse jamais 68ch. */
+  --r-largeur-lecture: 68ch;
+  --r-largeur-page: 72rem;
+
+  /* 6. COULEURS — thème clair (par défaut). Sobre : fond papier, encre,
+     UNE couleur d'accent. */
+  --r-papier: #faf7f1;        /* fond général, blanc cassé chaud */
+  --r-papier-carte: #ffffff;  /* fond des cartes */
+  --r-papier-creux: #f1ece2;  /* fond des blocs en creux (champs, citations) */
+  --r-filet: #ddd5c5;         /* filets de séparation */
+  --r-filet-fort: #b8ad97;
+  --r-encre: #201d18;         /* texte principal */
+  --r-encre-douce: #5c564a;   /* texte secondaire, méta */
+  --r-encre-legere: #8a8271;  /* horodatage, légendes */
+  --r-accent: #1d3a6e;        /* bleu profond — liens, actions */
+  --r-accent-fonce: #152a4f;
+  --r-accent-doux: #e7ecf5;   /* fond d'accent (sélection, badge) */
+  --r-succes: #2c5e37;
+  --r-erreur: #8c2b22;
+  --r-erreur-doux: #f7e5e2;
+  --r-ombre-carte: 0 1px 2px rgba(32, 29, 24, 0.05), 0 4px 16px rgba(32, 29, 24, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --r-papier: #17161a;
+    --r-papier-carte: #1f1e23;
+    --r-papier-creux: #26252b;
+    --r-filet: #38363e;
+    --r-filet-fort: #55515c;
+    --r-encre: #e8e4da;
+    --r-encre-douce: #b3ada0;
+    --r-encre-legere: #8a8478;
+    --r-accent: #9fb8e8;
+    --r-accent-fonce: #c3d3f2;
+    --r-accent-doux: #232c3e;
+    --r-succes: #8fc79b;
+    --r-erreur: #e79a90;
+    --r-erreur-doux: #3a2420;
+    --r-ombre-carte: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+}

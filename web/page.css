@@ -1,0 +1,560 @@
+/* =============================================================================
+   RatioPol — PAGE
+   Habillage éditorial : en-tête sobre, héros typographique, cartes d'idées,
+   formulaire guidé. Toutes les valeurs viennent de jetons.css (importé ici,
+   esbuild l'inline au bundle).
+   ========================================================================== */
+
+@import './jetons.css';
+
+
+/* 0. REMISE À ZÉRO ---------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-corps);
+  line-height: var(--r-txt-corps-h);
+  color: var(--r-encre);
+  background: var(--r-papier);
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--r-accent);
+  text-decoration-thickness: var(--r-esp-1p);
+  text-underline-offset: var(--r-esp-1);
+  transition: color var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+a:hover {
+  color: var(--r-accent-fonce);
+}
+
+:focus-visible {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+main {
+  flex: 1;
+}
+
+.conteneur {
+  width: min(var(--r-largeur-page), 100% - var(--r-esp-8));
+  margin-inline: auto;
+}
+
+.lecture {
+  width: min(var(--r-largeur-lecture), 100%);
+  margin-inline: auto;
+}
+
+/* 1. EN-TÊTE ---------------------------------------------------------------- */
+
+.entete {
+  border-bottom: var(--r-esp-1p) solid var(--r-filet);
+  background: var(--r-papier);
+}
+
+.entete-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  padding-block: var(--r-esp-4);
+  flex-wrap: wrap;
+}
+
+.marque {
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-lg);
+  font-weight: var(--r-graisse-forte);
+  letter-spacing: var(--r-interlettre-titre);
+  color: var(--r-encre);
+  text-decoration: none;
+}
+
+.marque:hover {
+  color: var(--r-accent);
+}
+
+.marque em {
+  font-style: normal;
+  color: var(--r-accent);
+}
+
+.entete-nav {
+  display: flex;
+  gap: var(--r-esp-5);
+  flex-wrap: wrap;
+  font-size: var(--r-txt-sm);
+}
+
+.entete-nav a {
+  color: var(--r-encre-douce);
+  text-decoration: none;
+}
+
+.entete-nav a:hover {
+  color: var(--r-accent);
+  text-decoration: underline;
+}
+
+/* 2. HÉROS ------------------------------------------------------------------ */
+
+.heros {
+  padding-block: var(--r-esp-16) var(--r-esp-10);
+}
+
+.heros h1 {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-3xl);
+  line-height: var(--r-txt-3xl-h);
+  font-weight: var(--r-graisse-forte);
+  letter-spacing: var(--r-interlettre-titre);
+  max-width: 22ch;
+}
+
+.heros p {
+  margin-top: var(--r-esp-5);
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+  color: var(--r-encre-douce);
+  max-width: 46ch;
+}
+
+.heros-actions {
+  display: flex;
+  gap: var(--r-esp-4);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--r-esp-8);
+}
+
+/* 3. BOUTONS ---------------------------------------------------------------- */
+
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--r-esp-2);
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-sm);
+  font-weight: var(--r-graisse-moyenne);
+  padding: var(--r-esp-3) var(--r-esp-5);
+  border-radius: var(--r-rayon-md);
+  border: var(--r-esp-1p) solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background var(--r-duree-instant) var(--r-courbe-sortie),
+    border-color var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+.bouton-primaire {
+  background: var(--r-accent);
+  color: var(--r-papier-carte);
+}
+
+.bouton-primaire:hover {
+  background: var(--r-accent-fonce);
+  color: var(--r-papier-carte);
+}
+
+.bouton-secondaire {
+  background: transparent;
+  color: var(--r-accent);
+  border-color: var(--r-filet-fort);
+}
+
+.bouton-secondaire:hover {
+  border-color: var(--r-accent);
+  color: var(--r-accent-fonce);
+}
+
+/* 4. SECTIONS & TITRES ------------------------------------------------------ */
+
+.section {
+  padding-block: var(--r-esp-10) var(--r-esp-12);
+}
+
+.section-titre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  margin-bottom: var(--r-esp-6);
+  padding-bottom: var(--r-esp-3);
+  border-bottom: var(--r-esp-1p) solid var(--r-filet);
+}
+
+.section-titre h2 {
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-xs);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-majuscules);
+  text-transform: uppercase;
+  color: var(--r-encre-douce);
+}
+
+.section-titre a {
+  font-size: var(--r-txt-sm);
+  text-decoration: none;
+}
+
+.section-titre a:hover {
+  text-decoration: underline;
+}
+
+.page-titre {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-2xl);
+  line-height: var(--r-txt-2xl-h);
+  font-weight: var(--r-graisse-forte);
+  letter-spacing: var(--r-interlettre-titre);
+}
+
+.page-sous-titre {
+  margin-top: var(--r-esp-3);
+  color: var(--r-encre-douce);
+  max-width: 60ch;
+}
+
+/* 5. CARTES D'IDÉES --------------------------------------------------------- */
+
+.grille-idees {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  gap: var(--r-esp-5);
+}
+
+.carte-idee {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r-esp-3);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-5);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--r-ombre-carte);
+  transition: border-color var(--r-duree-courte) var(--r-courbe-sortie);
+}
+
+.carte-idee:hover {
+  border-color: var(--r-filet-fort);
+}
+
+.carte-idee h3 {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-titre);
+}
+
+.carte-idee:hover h3 {
+  color: var(--r-accent);
+}
+
+.carte-idee p {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-sm);
+  line-height: var(--r-txt-sm-h);
+  color: var(--r-encre-douce);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.carte-idee-meta {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r-esp-3);
+  font-size: var(--r-txt-xs);
+  color: var(--r-encre-legere);
+}
+
+.badge-theme {
+  align-self: flex-start; /* s'ajuste à son texte, ne s'étire pas */
+  font-size: var(--r-txt-xs);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-majuscules);
+  text-transform: uppercase;
+  color: var(--r-accent);
+  background: var(--r-accent-doux);
+  border-radius: var(--r-rayon-plein);
+  padding: var(--r-esp-05) var(--r-esp-3);
+}
+
+/* 6. PAGE IDÉE --------------------------------------------------------------- */
+
+.idee-tete {
+  display: flex;
+  align-items: center;
+  gap: var(--r-esp-3);
+  flex-wrap: wrap;
+}
+
+.idee-corps {
+  margin-top: var(--r-esp-8);
+  display: grid;
+  gap: var(--r-esp-8);
+}
+
+.idee-bloc h2 {
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-xs);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-majuscules);
+  text-transform: uppercase;
+  color: var(--r-encre-douce);
+  padding-bottom: var(--r-esp-2);
+  border-bottom: var(--r-esp-1p) solid var(--r-filet);
+  margin-bottom: var(--r-esp-4);
+}
+
+.idee-bloc p {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-corps);
+  line-height: var(--r-txt-corps-h);
+  white-space: pre-line;
+}
+
+.idee-pied {
+  margin-top: var(--r-esp-10);
+  padding-top: var(--r-esp-6);
+  border-top: var(--r-esp-1p) solid var(--r-filet);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  flex-wrap: wrap;
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+}
+
+.compteur-soutiens {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--r-graisse-appuyee);
+  color: var(--r-encre);
+}
+
+/* 7. FORMULAIRE -------------------------------------------------------------- */
+
+.formulaire {
+  display: grid;
+  gap: var(--r-esp-6);
+  margin-top: var(--r-esp-8);
+}
+
+.champ {
+  display: grid;
+  gap: var(--r-esp-2);
+}
+
+.champ label {
+  font-size: var(--r-txt-sm);
+  font-weight: var(--r-graisse-appuyee);
+}
+
+.champ .aide {
+  font-size: var(--r-txt-xs);
+  color: var(--r-encre-legere);
+}
+
+.champ input[type='text'],
+.champ input[type='email'],
+.champ select,
+.champ textarea {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-corps);
+  line-height: var(--r-txt-corps-h);
+  color: var(--r-encre);
+  background: var(--r-papier-creux);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-3) var(--r-esp-4);
+  width: 100%;
+}
+
+.champ textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.champ input:focus,
+.champ select:focus,
+.champ textarea:focus {
+  outline: 2px solid var(--r-accent);
+  outline-offset: 0;
+  border-color: var(--r-accent);
+}
+
+.compteur-caracteres {
+  font-size: var(--r-txt-xs);
+  color: var(--r-encre-legere);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.compteur-caracteres[data-proche='vrai'] {
+  color: var(--r-erreur);
+  font-weight: var(--r-graisse-appuyee);
+}
+
+.champ-erreur {
+  font-size: var(--r-txt-sm);
+  color: var(--r-erreur);
+  background: var(--r-erreur-doux);
+  border-radius: var(--r-rayon-xs);
+  padding: var(--r-esp-2) var(--r-esp-3);
+}
+
+.champ-erreur:empty {
+  display: none;
+}
+
+.case-cocher {
+  display: flex;
+  gap: var(--r-esp-3);
+  align-items: flex-start;
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+}
+
+.case-cocher input {
+  margin-top: var(--r-esp-1);
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--r-accent);
+  flex: none;
+}
+
+/* Le champ-piège anti-robots : hors écran, invisible, jamais rempli par un
+   humain. display:none sur .champ-piege en entier. */
+.champ-piege {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+}
+
+.recap-erreurs {
+  background: var(--r-erreur-doux);
+  border: var(--r-esp-1p) solid var(--r-erreur);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-4) var(--r-esp-5);
+  font-size: var(--r-txt-sm);
+}
+
+.recap-erreurs ul {
+  margin: var(--r-esp-2) 0 0 var(--r-esp-5);
+}
+
+/* 8. LISTES, PIED, DIVERS ---------------------------------------------------- */
+
+.liste-simple {
+  display: grid;
+  gap: var(--r-esp-4);
+  padding: 0;
+  list-style: none;
+}
+
+.liste-simple li {
+  padding-left: var(--r-esp-5);
+  position: relative;
+}
+
+.liste-simple li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--r-encre-legere);
+}
+
+.prose {
+  font-family: var(--r-police-lecture);
+  display: grid;
+  gap: var(--r-esp-4);
+}
+
+.prose p {
+  line-height: var(--r-txt-corps-h);
+}
+
+.vide {
+  padding-block: var(--r-esp-16);
+  text-align: center;
+  color: var(--r-encre-douce);
+  font-family: var(--r-police-lecture);
+}
+
+.pied {
+  border-top: var(--r-esp-1p) solid var(--r-filet);
+  margin-top: var(--r-esp-16);
+  padding-block: var(--r-esp-8);
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-legere);
+}
+
+.pied-inner {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  flex-wrap: wrap;
+}
+
+.pied a {
+  color: var(--r-encre-douce);
+}
+
+.recherche-barre {
+  display: flex;
+  gap: var(--r-esp-3);
+  margin-block: var(--r-esp-6);
+}
+
+.recherche-barre input[type='search'] {
+  flex: 1;
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre);
+  background: var(--r-papier-creux);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-3) var(--r-esp-4);
+}
