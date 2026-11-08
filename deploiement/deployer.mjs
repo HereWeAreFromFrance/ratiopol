@@ -60,9 +60,9 @@ async function principal() {
   console.log('4/6 Base…');
   await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT}/.nouveau && set -a && . /etc/ratiopol.env && set +a && node base/migrate.mjs"`);
 
-  // 5. Bascule atomique + redémarrage.
+  // 5. Bascule atomique + redémarrage (sans .precedent à la première pose).
   console.log('5/6 Bascule…');
-  await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && rm -rf .precedent && mv actuel .precedent && mv .nouveau actuel && systemctl restart ratiopol"`);
+  await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && rm -rf .precedent && [ -d actuel ] && mv actuel .precedent; mv .nouveau actuel && systemctl restart ratiopol"`);
 
   // 6. Contrôle — ou retour arrière.
   console.log('6/6 Contrôle…');
