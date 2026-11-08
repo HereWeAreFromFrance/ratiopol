@@ -52,7 +52,7 @@ Voir `ARCHITECTURE.md`. L'essentiel :
 |---|---|
 | `RP_PORT` | port local (8090 par défaut) |
 | `RP_SEL` | secret long : empreintes IP, jetons admin |
-| `RP_PG_URL` | `postgres://debian@localhost/ratiopol_database` |
+| `RP_PG_URL` | `postgres://debian@localhost/ratiopol_database?host=/var/run/postgresql` (socket, peer auth) |
 | `RP_ORIGINE` | `https://ratiopol.fr` (sitemap, canoniques) |
 | `RP_EMPREINTE_MDP_ADMIN` | sel$hash scrypt — absent ⇒ `/admin` fermé (503) |
 

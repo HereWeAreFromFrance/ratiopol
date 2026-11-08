@@ -32,7 +32,10 @@ if [ ! -f "$ENV" ]; then
 # RatioPol — configuration du serveur (secrets : chmod 600, hors dépôt)
 RP_PORT=8090
 RP_SEL=$(head -c 48 /dev/urandom | base64 | tr -d '=+/\n')
-RP_PG_URL=postgres://debian@localhost/ratiopol_database
+# Socket Unix + peer auth (pg_hba.conf : local all all peer) — TCP exigerait
+# un mot de passe, la coutume maison n'en pose pas. Le `?host=` écrase le
+# host de l'URL (postgres.js) ; « localhost » seul passerait par TCP.
+RP_PG_URL=postgres://debian@localhost/ratiopol_database?host=/var/run/postgresql
 RP_ORIGINE=https://ratiopol.fr
 # RP_EMPREINTE_MDP_ADMIN=  ← à poser après génération (voir README)
 FIN
