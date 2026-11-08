@@ -429,7 +429,7 @@ export function pageMentions(assets: Assets): string {
     <h1 class="page-titre">Mentions &amp; données</h1>
     <div class="prose">
       <p><strong>Éditeur&nbsp;:</strong> le site est édité à titre personnel et non professionnel.
-      Contact&nbsp;: <em>[adresse de contact à poser à l'installation]</em>.
+      Contact&nbsp;: <a href="mailto:contact@ratiopol.fr">contact@ratiopol.fr</a>.
       Hébergement&nbsp;: serveur dédié dans l'Union européenne.</p>
 
       <h2 id="donnees">Vos données</h2>
@@ -444,7 +444,8 @@ export function pageMentions(assets: Assets): string {
         profilée, pas de cookie publicitaire, pas d'adresse IP en clair. Pour dédupliquer les
         soutiens, seule une empreinte illisible (hachage du jour) est conservée.</li>
         <li><strong>Vos droits&nbsp;:</strong> retirer votre consentement, faire supprimer ou
-        rectifier une idée, récupérer son contenu — écrivez à l'adresse de contact, réponse sous
+        rectifier une idée, récupérer son contenu — écrivez à
+        <a href="mailto:contact@ratiopol.fr">contact@ratiopol.fr</a>, réponse sous
         30 jours. La suppression retire l'idée et ses soutiens.</li>
       </ul>
 
