@@ -34,7 +34,7 @@ async function principal() {
 
   if (retour) {
     console.log('Retour arrière…');
-    await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && [ -d .precedent ] && systemctl stop ratiopol && rm -rf actuel && mv .precedent actuel && systemctl start ratiopol && sleep 1 && curl -sf http://127.0.0.1:${PORT}/sante"`);
+    await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && [ -d .precedent ] && sudo systemctl stop ratiopol && rm -rf actuel && mv .precedent actuel && sudo systemctl start ratiopol && sleep 1 && curl -sf http://127.0.0.1:${PORT}/sante"`);
     console.log('Revenu à la version précédente.');
     return;
   }
@@ -62,14 +62,14 @@ async function principal() {
 
   // 5. Bascule atomique + redémarrage (sans .precedent à la première pose).
   console.log('5/6 Bascule…');
-  await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && rm -rf .precedent && [ -d actuel ] && mv actuel .precedent; mv .nouveau actuel && systemctl restart ratiopol"`);
+  await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && rm -rf .precedent && [ -d actuel ] && mv actuel .precedent; mv .nouveau actuel && sudo systemctl restart ratiopol"`);
 
   // 6. Contrôle — ou retour arrière.
   console.log('6/6 Contrôle…');
   const ok = await sh(`ssh ${HOTE} "sleep 1 && curl -sf http://127.0.0.1:${PORT}/sante && curl -sf -o /dev/null -w '%{http_code}' http://127.0.0.1:${PORT}/ | grep -q 200 && echo CONTROLE-OK"`);
   if (!ok.includes('CONTROLE-OK')) {
     console.error('Contrôle échoué — retour arrière automatique.');
-    await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && systemctl stop ratiopol && rm -rf actuel && mv .precedent actuel && systemctl start ratiopol"`);
+    await sh(`ssh ${HOTE} "cd ${CHEMIN_DISTANT} && sudo systemctl stop ratiopol && rm -rf actuel && mv .precedent actuel && sudo systemctl start ratiopol"`);
     process.exit(1);
   }
   console.log('Déployé et contrôlé. L’ancienne version reste dans .precedent (retour : --retour).');
