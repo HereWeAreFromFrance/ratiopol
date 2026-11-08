@@ -4,8 +4,11 @@
 // côté serveur. Il n'ajoute que du confort :
 //  · compteurs de caractères sur les champs du formulaire guidé (borne
 //    visible = gabarit compris avant l'erreur) ;
-//  · soutien sans recharger la page (le formulaire natif reste le secours).
+//  · soutien sans recharger la page (le formulaire natif reste le secours) ;
+//  · les annonces de visite /_vu (visites.ts, le contrat maison).
 // Zéro framework, zéro dépendance, un seul fichier bundlé par build.mjs.
+
+import { annoncerVisites } from './visites.ts';
 
 const BORNES: Record<string, [number, number]> = {
   titre: [12, 140],
@@ -67,3 +70,4 @@ function poseSoutien(): void {
 
 poseCompteurs();
 poseSoutien();
+annoncerVisites();
