@@ -16,8 +16,13 @@ SERVICE=/etc/systemd/system/ratiopol.service
 ENV=/etc/ratiopol.env
 
 echo "— Base de données PostgreSQL (une base par projet, coutume maison)"
-sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname='ratiopol_database'" | grep -q 1 || \
-  sudo -u postgres createdb -O debian ratiopol_database
+# Rôle dédié + mot de passe (comme cowrights) : postgres.js ne sait pas faire
+# peer auth par socket avec une URL seule, et TCP exige un mot de passe.
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='ratiopol'" | grep -q 1 || \
+  sudo -u postgres psql -c "CREATE ROLE ratiopol LOGIN PASSWORD '$(head -c 24 /dev/urandom | base64 | tr -d '=+/')"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='ratiopol_database'" | grep -q 1 || \
+  sudo -u postgres createdb -O ratiopol ratiopol_database
+sudo -u postgres psql -c "ALTER DATABASE ratiopol_database OWNER TO ratiopol" >/dev/null
 
 echo "— Répertoire $REPERTOIRE"
 sudo mkdir -p "$REPERTOIRE"
@@ -26,20 +31,22 @@ sudo chown debian:debian "$REPERTOIRE"
 echo "— Configuration $ENV (les secrets vivent là, jamais dans le dépôt)"
 if [ ! -f "$ENV" ]; then
   MOT_DE_PASSE_ADMIN="$(head -c 32 /dev/urandom | base64 | tr -d '=+/')"
+  # Le mot de passe du rôle n'est pas relisible une fois haché (SCRAM) : si
+  # l'env n'existe pas, on régénère le mot de passe pour le poser en clair.
+  MDP_BD="$(head -c 24 /dev/urandom | base64 | tr -d '=+/')"
+  sudo -u postgres psql -c "ALTER ROLE ratiopol LOGIN PASSWORD '$MDP_BD'" >/dev/null
   # L'empreinte scrypt du mot de passe admin se calcule sur la machine de
-  # développement : npm exec -- node -e "…" (voir README, section Admin).
+  # développement : outils/empreinte-mdp.mjs (voir README, section Admin).
   sudo tee "$ENV" >/dev/null <<FIN
-# RatioPol — configuration du serveur (secrets : chmod 600, hors dépôt)
+# RatioPol — configuration du serveur (secrets : hors dépôt, root:debian 640)
 RP_PORT=8090
 RP_SEL=$(head -c 48 /dev/urandom | base64 | tr -d '=+/\n')
-# Socket Unix + peer auth (pg_hba.conf : local all all peer) — TCP exigerait
-# un mot de passe, la coutume maison n'en pose pas. Le `?host=` écrase le
-# host de l'URL (postgres.js) ; « localhost » seul passerait par TCP.
-RP_PG_URL=postgres://debian@localhost/ratiopol_database?host=/var/run/postgresql
+RP_PG_URL=postgres://ratiopol:$MDP_BD@127.0.0.1:5432/ratiopol_database
 RP_ORIGINE=https://ratiopol.fr
 # RP_EMPREINTE_MDP_ADMIN=  ← à poser après génération (voir README)
 FIN
-  sudo chmod 600 "$ENV"
+  sudo chown root:debian "$ENV"
+  sudo chmod 640 "$ENV"
   echo "  posé. Générez puis posez RP_EMPREINTE_MDP_ADMIN pour ouvrir /admin"
   echo "  (mot de passe admin de secours suggéré : $MOT_DE_PASSE_ADMIN)"
 fi
