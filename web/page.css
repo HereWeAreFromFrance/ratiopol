@@ -563,33 +563,88 @@ main {
    Les chiffres officiels : barres proportionnelles en pur CSS (aucune
    image, aucun JS), cartes de synthèse, notes de méthode. La largeur des
    barres est une donnée, pas un style : elle arrive en attribut style,
-   calculée côté serveur. */
+   calculée côté serveur. Sur grand écran les listes passent en deux
+   colonnes ; chaque ligne à thème est un lien vers les idées de ce thème. */
 
 .reperes-note {
   margin-block: var(--r-esp-4);
   font-size: var(--r-txt-xs);
   color: var(--r-encre-legere);
+  max-width: var(--r-largeur-lecture);
+}
+
+.reperes-sur-titre {
+  margin-top: var(--r-esp-10);
+}
+
+/* Les listes de postes : une colonne sur mobile, deux dès qu'il y a de la
+   place. Chaque ligne garde sa barre proportionnelle à la valeur réelle. */
+.reperes-colonnes {
+  display: grid;
+  gap: var(--r-esp-2) var(--r-esp-10);
+}
+
+/* var() n'est pas évalué dans une requête média : la valeur du jeton
+   --r-ecran-palette est donc répétée ici, à tenir à jour avec lui. */
+@media (min-width: 56rem) {
+  .reperes-colonnes {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .reperes-ligne {
-  margin-block: var(--r-esp-3);
+  display: grid;
+  align-content: start;
+  gap: var(--r-esp-1);
+  padding: var(--r-esp-2) var(--r-esp-3);
+  margin-inline: calc(-1 * var(--r-esp-3));
+  border-radius: var(--r-rayon-sm);
+}
+
+/* La ligne à thème est un lien : la zone de clic couvre tout (la ligne fait
+   trois rangées, bien au-delà d'une cible de pouce) et tout le bloc réagit. */
+a.reperes-ligne {
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+a.reperes-ligne:hover {
+  background: var(--r-papier-creux);
+}
+
+a.reperes-ligne:hover .reperes-ligne-theme {
+  color: var(--r-accent);
+  text-decoration: underline;
 }
 
 .reperes-ligne-tete {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: var(--r-esp-4);
   font-size: var(--r-txt-sm);
 }
 
-.reperes-ligne-tete span:last-child {
+.reperes-ligne-nom {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.reperes-ligne-valeur {
   font-variant-numeric: tabular-nums;
   color: var(--r-encre-douce);
   white-space: nowrap;
 }
 
+.reperes-ligne-theme {
+  font-size: var(--r-txt-xs);
+  /* encre-douce et pas encre-legere : c'est l'affordance de clic, elle doit
+     passer le seuil AA dans les deux thèmes. */
+  color: var(--r-encre-douce);
+}
+
 .reperes-piste {
-  margin-top: var(--r-esp-1);
   height: var(--r-esp-2);
   background: var(--r-papier-creux);
   border-radius: var(--r-rayon-plein);
@@ -599,6 +654,21 @@ main {
   height: 100%;
   background: var(--r-accent);
   border-radius: inherit;
+}
+
+/* Recettes : barres à gauche, méthode et solde à droite sur grand écran. */
+.reperes-recettes {
+  display: grid;
+  gap: var(--r-esp-8);
+  align-items: start;
+}
+
+/* var() n'est pas évalué dans une requête média : la valeur du jeton
+   --r-ecran-palette est donc répétée ici, à tenir à jour avec lui. */
+@media (min-width: 56rem) {
+  .reperes-recettes {
+    grid-template-columns: 3fr 2fr;
+  }
 }
 
 .reperes-total {
@@ -618,7 +688,7 @@ main {
 }
 
 .reperes-calcul {
-  margin-block: var(--r-esp-6);
+  margin-block: var(--r-esp-4);
   display: grid;
   gap: var(--r-esp-2);
 }
@@ -639,7 +709,7 @@ main {
 .reperes-stats {
   margin-block: var(--r-esp-6);
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--r-carte-min), 1fr));
   gap: var(--r-esp-4);
 }
 
@@ -672,7 +742,7 @@ main {
 }
 
 .reperes-sous-titre {
-  margin-top: var(--r-esp-8);
+  margin-top: var(--r-esp-6);
   font-family: var(--r-police-interface);
   font-size: var(--r-txt-sm);
   font-weight: var(--r-graisse-appuyee);
@@ -682,4 +752,5 @@ main {
   font-family: var(--r-police-lecture);
   font-size: var(--r-txt-lg);
   line-height: var(--r-txt-lg-h);
+  max-width: var(--r-largeur-lecture);
 }

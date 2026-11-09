@@ -16,6 +16,10 @@ export interface Poste {
   nom: string;
   /** Milliards d'euros, tel que publié. */
   mds: number;
+  /** Thème RatioPol vers lequel la ligne mène (id de themes.ts) —
+   *  « d'où partent les idées sur ce poste ». Absent sur les lignes de
+   *  méthode (calcul des recettes), qui ne sont pas des postes. */
+  theme?: string;
 }
 
 export interface Source {
@@ -38,32 +42,32 @@ export const BUDGET_ETAT = {
   /** Crédits de paiement du budget général. */
   totalDepensesMds: 593.9,
   depenses: [
-    { nom: 'Remboursements et dégrèvements', mds: 145.6 },
-    { nom: 'Enseignement scolaire', mds: 89.6 },
-    { nom: 'Défense', mds: 66.5 },
-    { nom: 'Engagements financiers de l’État', mds: 60.3 },
-    { nom: 'Recherche et enseignement supérieur', mds: 31.6 },
-    { nom: 'Solidarité, insertion et égalité des chances', mds: 31.3 },
-    { nom: 'Sécurités', mds: 25.8 },
-    { nom: 'Écologie, développement et mobilité durables', mds: 22.8 },
-    { nom: 'Cohésion des territoires', mds: 22.6 },
-    { nom: 'Travail et emploi', mds: 20.8 },
-    { nom: 'Justice', mds: 13.0 },
-    { nom: 'Gestion des finances publiques', mds: 11.0 },
-    { nom: 'Administration générale et territoriale de l’État', mds: 5.1 },
-    { nom: 'Investir pour la France de 2030', mds: 4.4 },
+    { nom: 'Remboursements et dégrèvements', mds: 145.6, theme: 'impots' },
+    { nom: 'Enseignement scolaire', mds: 89.6, theme: 'ecole' },
+    { nom: 'Défense', mds: 66.5, theme: 'securite' },
+    { nom: 'Engagements financiers de l’État', mds: 60.3, theme: 'impots' },
+    { nom: 'Recherche et enseignement supérieur', mds: 31.6, theme: 'ecole' },
+    { nom: 'Solidarité, insertion et égalité des chances', mds: 31.3, theme: 'travail' },
+    { nom: 'Sécurités', mds: 25.8, theme: 'securite' },
+    { nom: 'Écologie, développement et mobilité durables', mds: 22.8, theme: 'environnement' },
+    { nom: 'Cohésion des territoires', mds: 22.6, theme: 'territoires' },
+    { nom: 'Travail et emploi', mds: 20.8, theme: 'travail' },
+    { nom: 'Justice', mds: 13.0, theme: 'securite' },
+    { nom: 'Gestion des finances publiques', mds: 11.0, theme: 'institutions' },
+    { nom: 'Administration générale et territoriale de l’État', mds: 5.1, theme: 'institutions' },
+    { nom: 'Investir pour la France de 2030', mds: 4.4, theme: 'autre' },
   ] as Poste[],
-  autresDepenses: { nom: 'Autres missions (18)', mds: 43.5 } as Poste,
+  autresDepenses: { nom: 'Autres missions (18)', mds: 43.5, theme: 'autre' } as Poste,
 
   /** Recettes du budget général, « nettes » : les recettes fiscales sont
    *  comptées après remboursements et dégrèvements d'impôts (145,6 Md€,
    *  comptés en dépenses ci-dessus). */
   recettesFiscales: [
-    { nom: 'Impôt sur le revenu (produit net)', mds: 99.8 },
-    { nom: 'TVA (produit net)', mds: 99.8 },
-    { nom: 'Impôt sur les sociétés (produit net)', mds: 61.6 },
-    { nom: 'Autres contributions fiscales (produit net)', mds: 77.0 },
-    { nom: 'Accises sur les énergies — TICPE (montant brut)', mds: 25.3 },
+    { nom: 'Impôt sur le revenu (produit net)', mds: 99.8, theme: 'impots' },
+    { nom: 'TVA (produit net)', mds: 99.8, theme: 'impots' },
+    { nom: 'Impôt sur les sociétés (produit net)', mds: 61.6, theme: 'impots' },
+    { nom: 'Autres contributions fiscales (produit net)', mds: 77.0, theme: 'impots' },
+    { nom: 'Accises sur les énergies — TICPE (montant brut)', mds: 25.3, theme: 'impots' },
   ] as Poste[],
   totalFiscalesMds: 363.6,
   recettesNonFiscalesMds: 28.9,
@@ -97,10 +101,10 @@ export const FINANCES_PUBLIQUES = {
   recettesPib: 52.2,
   /** Dépenses par sous-secteur, telles que publiées (non consolidées). */
   sousSecteurs: [
-    { nom: 'Administrations de sécurité sociale', mds: 803.2 },
-    { nom: 'État', mds: 607.7 },
-    { nom: 'Administrations publiques locales (communes, départements, régions)', mds: 335.5 },
-    { nom: 'Organismes divers d’administration centrale (ODAC)', mds: 142.3 },
+    { nom: 'Administrations de sécurité sociale', mds: 803.2, theme: 'sante' },
+    { nom: 'État', mds: 607.7, theme: 'institutions' },
+    { nom: 'Administrations publiques locales (communes, départements, régions)', mds: 335.5, theme: 'territoires' },
+    { nom: 'Organismes divers d’administration centrale (ODAC)', mds: 142.3, theme: 'autre' },
   ] as Poste[],
   noteSousSecteurs:
     'Ces montants ne s’additionnent pas : ils incluent les transferts entre administrations ' +

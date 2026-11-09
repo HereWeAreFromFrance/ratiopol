@@ -78,6 +78,8 @@
   /* 5. STRUCTURE — la colonne de lecture ne dépasse jamais 68ch. */
   --r-largeur-lecture: 68ch;
   --r-largeur-page: 72rem;
+  --r-ecran-palette: 56rem; /* breakpoint où les palettes de repères passent en deux colonnes */
+  --r-carte-min: 15rem;     /* largeur minimale d'une carte de synthèse (repères) */
 
   /* 6. COULEURS — thème clair (par défaut). Sobre : fond papier, encre,
      UNE couleur d'accent. */

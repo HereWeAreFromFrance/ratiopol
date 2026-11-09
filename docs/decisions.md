@@ -61,3 +61,19 @@ calculée côté serveur, pas un style. Renvois depuis le formulaire de dépôt
 et le thème « Impôts & budget » pour fermer la boucle chiffres → idée.
 Un encadré de repères par thème (logement, santé…) est envisagé en v2 —
 chaque thème mériterait ses propres sources, plus lourd à maintenir.
+
+**Complément du même jour — ergonomie et lignes cliquables.** La page est
+refondue pour occuper l'espace : sortie de la colonne de 68ch, bandeau
+« L'essentiel » (les quatre chiffres publics) en tête, dépenses/recettes en
+deux colonnes sur grand écran, vérifiée de 320 px à 1440 px, clair et sombre
+(captures multi-viewports dans `outils/capture.mjs`). **Chaque ligne de
+poste est cliquable** vers sa page de thème RatioPol — c'est un choix
+éditorial de Paul : le chiffre mène vers l'avant (les idées du thème, puis
+le dépôt), sans rien changer à l'objectivité des chiffres. Le mapping
+(mission → thème) vit dans `serveur/reperes.ts` et est vérifié par le test
+de cohérence ; les lignes de méthode (prélèvements, fonds de concours)
+restent non cliquables. Constat accepté : les `@media` CSS ne peuvent pas
+consommer de `var()` (limite du langage) — les breakpoints restent
+littéraux, liés au jeton par commentaire. Un aller-retour ergonome ⇄
+contrôleur a précédé la mise en ligne (contraste AA sur l'affordance
+cliquable, jetons, note d'arrondi).

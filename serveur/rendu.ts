@@ -188,17 +188,23 @@ export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soute
 /** Une ligne poste + barre proportionnelle. La barre est relative au plus
  *  gros poste (lisibilité) ; la part affichée est relative à totalPourPart,
  *  ou absente quand un total n'a pas de sens (sous-secteurs qui se
- *  chevauchent). */
+ *  chevauchent). Un poste avec thème devient un lien vers les idées de ce
+ *  thème — la donnée reste la première information du lien. */
 function lignesPostes(postes: Poste[], totalPourPart: number | null): string {
   const plusGros = Math.max(...postes.map((p) => p.mds));
   return postes
     .map((p) => {
       const part = totalPourPart === null ? '' : ` · ${Math.round((p.mds / totalPourPart) * 100)}&nbsp;%`;
       const largeur = Math.max(1, (p.mds / plusGros) * 100).toFixed(1);
-      return `<div class="reperes-ligne">
-  <div class="reperes-ligne-tete"><span>${e(p.nom)}</span><span>${formatteurMds.format(p.mds)}&nbsp;Md€${part}</span></div>
+      const theme = p.theme ? themeParId(p.theme) : undefined;
+      const corps = `
+  <div class="reperes-ligne-tete"><span class="reperes-ligne-nom">${e(p.nom)}</span><span class="reperes-ligne-valeur">${formatteurMds.format(p.mds)}&nbsp;Md€${part}</span></div>
   <div class="reperes-piste"><div class="reperes-plein" style="width:${largeur}%"></div></div>
+  ${theme ? `<span class="reperes-ligne-theme">${e(theme.nom)}&nbsp;→</span>` : ''}`;
+      if (!theme) return `<div class="reperes-ligne">${corps}
 </div>`;
+      return `<a class="reperes-ligne" href="/theme/${e(p.theme!)}">${corps}
+</a>`;
     })
     .join('\n');
 }
@@ -224,12 +230,23 @@ export function pageReperes(assets: Assets): string {
   const be = BUDGET_ETAT;
   const fp = FINANCES_PUBLIQUES;
   const contenu = `
-<div class="conteneur lecture">
+<div class="conteneur">
   <section class="section">
     <h1 class="page-titre">Repères</h1>
     <p class="page-sous-titre">Les chiffres officiels des finances publiques françaises, avec leur
     source et leur date. Aucun commentaire&nbsp;: ce sont des repères partagés, pour poser un
-    problème — et surtout son arbitrage — sur des bases solides.</p>
+    problème — et surtout son arbitrage — sur des bases solides. Chaque ligne mène vers les idées
+    du thème qui lui correspond.</p>
+
+    <div class="section-titre reperes-sur-titre"><h2>L’essentiel — toutes les administrations publiques (${fp.année})</h2></div>
+    <div class="reperes-stats">
+      ${statRepere('Dépenses publiques', `${formatteurMds.format(fp.dépensesMds)} Md€`, `${formatteurMds.format(fp.dépensesPib)} % du PIB`)}
+      ${statRepere('Recettes publiques', `${formatteurMds.format(fp.recettesMds)} Md€`, `${formatteurMds.format(fp.recettesPib)} % du PIB`)}
+      ${statRepere('Déficit public', `${formatteurMds.format(fp.déficitMds)} Md€`, `${formatteurMds.format(fp.déficitPib)} % du PIB`)}
+      ${statRepere('Dette publique', `${formatteurEntier.format(fp.detteMds)} Md€`, `${formatteurMds.format(fp.dettePib)} % du PIB au ${fp.detteDate}`)}
+    </div>
+    <p class="reperes-note">Le budget de l’État, détaillé plus bas, n’est qu’une partie de cet
+    ensemble&nbsp;: la Sécurité sociale et les collectivités dépensent davantage que lui.</p>
   </section>
 
   <section class="section">
@@ -237,7 +254,9 @@ export function pageReperes(assets: Assets): string {
     <p class="reperes-note">Crédits de paiement du budget général — ${be.millésime}. Les missions
     principales sont listées&nbsp;; les autres sont regroupées — rien n’est omis, le total est
     celui de la loi.</p>
-    ${lignesPostes([...be.depenses, be.autresDepenses], be.totalDepensesMds)}
+    <div class="reperes-colonnes">
+      ${lignesPostes([...be.depenses, be.autresDepenses], be.totalDepensesMds)}
+    </div>
     ${totalPoste('Total du budget général', be.totalDepensesMds)}
     <p class="reperes-note">Emplois de l’État autorisés&nbsp;:
     ${formatteurEntier.format(be.emploisAutorises)} (équivalents temps plein travaillés).</p>
@@ -248,45 +267,44 @@ export function pageReperes(assets: Assets): string {
     <p class="reperes-note">Recettes fiscales «&nbsp;nettes&nbsp;»&nbsp;: comptées après
     remboursements et dégrèvements d’impôts (${formatteurMds.format(be.depenses[0].mds)}&nbsp;Md€,
     inscrits en dépenses ci-dessus).</p>
-    ${lignesPostes(be.recettesFiscales, be.totalFiscalesMds)}
-    ${totalPoste('Total des recettes fiscales nettes', be.totalFiscalesMds)}
-    <div class="reperes-calcul">
-      ${ligneCalcul('Recettes non fiscales', be.recettesNonFiscalesMds, '')}
-      ${ligneCalcul('Recettes avant prélèvements', be.recettesAvantPrélèvementsMds, '')}
-      ${be.prélèvements.map((p) => ligneCalcul(`Moins&nbsp;: ${p.nom}`, p.mds, '−')).join('\n')}
-      ${ligneCalcul('Plus&nbsp;: fonds de concours', be.fondsDeConcoursMds, '+')}
-      ${totalPoste('Recettes nettes du budget général', be.recettesNettesMds)}
-    </div>
-    <div class="reperes-stats">
-      ${statRepere('Recettes nettes du budget général', `${formatteurMds.format(be.recettesNettesMds)} Md€`, `loi de finances initiale ${be.année}`)}
-      ${statRepere('Charges nettes du budget général', `${formatteurMds.format(be.chargesNettesMds)} Md€`, `loi de finances initiale ${be.année}`)}
-      ${statRepere('Solde de l’État', `${formatteurMds.format(be.soldeMds)} Md€`, 'budget général, budgets annexes et comptes spéciaux')}
+    <div class="reperes-recettes">
+      <div>
+        ${lignesPostes(be.recettesFiscales, be.totalFiscalesMds)}
+        ${totalPoste('Total des recettes fiscales nettes', be.totalFiscalesMds)}
+      </div>
+      <div>
+        <h3 class="reperes-sous-titre">Des recettes brutes aux recettes nettes</h3>
+        <div class="reperes-calcul">
+          ${ligneCalcul('Recettes non fiscales', be.recettesNonFiscalesMds, '')}
+          ${ligneCalcul('Recettes avant prélèvements', be.recettesAvantPrélèvementsMds, '')}
+          ${be.prélèvements.map((p) => ligneCalcul(`Moins&nbsp;: ${p.nom}`, p.mds, '−')).join('\n')}
+          ${ligneCalcul('Plus&nbsp;: fonds de concours', be.fondsDeConcoursMds, '+')}
+          ${totalPoste('Recettes nettes du budget général', be.recettesNettesMds)}
+        </div>
+        <div class="reperes-stats">
+          ${statRepere('Charges nettes du budget général', `${formatteurMds.format(be.chargesNettesMds)} Md€`, `loi de finances initiale ${be.année}`)}
+          ${statRepere('Solde de l’État', `${formatteurMds.format(be.soldeMds)} Md€`, 'budget général, budgets annexes et comptes spéciaux')}
+        </div>
+      </div>
     </div>
   </section>
 
   <section class="section">
-    <div class="section-titre"><h2>Toutes les administrations publiques (${fp.année})</h2></div>
-    <p class="reperes-note">Le budget de l’État n’est qu’une partie de l’argent public&nbsp;:
-    la Sécurité sociale et les collectivités dépensent davantage que lui.</p>
-    <div class="reperes-stats">
-      ${statRepere('Dépenses publiques', `${formatteurMds.format(fp.dépensesMds)} Md€`, `${formatteurMds.format(fp.dépensesPib)} % du PIB`)}
-      ${statRepere('Recettes publiques', `${formatteurMds.format(fp.recettesMds)} Md€`, `${formatteurMds.format(fp.recettesPib)} % du PIB`)}
-      ${statRepere('Déficit public', `${formatteurMds.format(fp.déficitMds)} Md€`, `${formatteurMds.format(fp.déficitPib)} % du PIB`)}
-      ${statRepere('Dette publique', `${formatteurEntier.format(fp.detteMds)} Md€`, `${formatteurMds.format(fp.dettePib)} % du PIB au ${fp.detteDate}`)}
-    </div>
-    <h3 class="reperes-sous-titre">Dépenses par sous-secteur (${fp.année})</h3>
-    ${lignesPostes(fp.sousSecteurs, null)}
+    <div class="section-titre"><h2>Qui dépense — sous-secteurs (${fp.année})</h2></div>
     <p class="reperes-note">${e(fp.noteSousSecteurs)}</p>
+    <div class="reperes-colonnes">
+      ${lignesPostes(fp.sousSecteurs, null)}
+    </div>
   </section>
 
   <section class="section">
     <div class="section-titre"><h2>Sources</h2></div>
     <ul class="liste-simple">
-      ${SOURCES_REPERES.map((s) => `<li><a rel="noopener" href="${e(s.url)}">${e(s.nom)}</a></li>`).join('\n')}
+      ${SOURCES_REPERES.map((s) => `<li><a href="${e(s.url)}">${e(s.nom)}</a></li>`).join('\n')}
     </ul>
     <p class="reperes-note">Les totaux affichés sont ceux publiés par les sources&nbsp;; la somme
-    des montants arrondis peut s’en écarter de 0,1&nbsp;Md€. Cette page est mise à jour à la main
-    à chaque nouvelle loi de finances.</p>
+    des montants arrondis peut s’en écarter de 0,1&nbsp;Md€ et celle des parts arrondies
+    de 100&nbsp;%. Cette page est mise à jour à la main à chaque nouvelle loi de finances.</p>
   </section>
 
   <section class="section">

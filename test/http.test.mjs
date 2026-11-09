@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -300,4 +300,12 @@ test('les repères budgétaires restent cohérents', () => {
   assert.ok(proche(fp.dépensesMds - fp.recettesMds, fp.déficitMds), `déficit : ${fp.dépensesMds} − ${fp.recettesMds} ≠ ${fp.déficitMds}`);
   // Le solde de l'État est négatif : les chiffres le disent, pas le contraire.
   assert.ok(be.soldeMds < 0 && fp.déficitMds > 0);
+
+  // Chaque poste mène vers un thème existant — et aucun poste ne reste sans
+  // thème (les lignes de méthode, hors Poste, ne sont pas concernées).
+  const postes = [...be.depenses, be.autresDepenses, ...be.recettesFiscales, ...fp.sousSecteurs];
+  for (const p of postes) {
+    assert.ok(p.theme, `poste sans thème : ${p.nom}`);
+    assert.ok(THEMES.some((t) => t.id === p.theme), `thème inconnu « ${p.theme} » pour : ${p.nom}`);
+  }
 });

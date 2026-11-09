@@ -80,6 +80,23 @@ for (const [nom, url, pleine] of pages) {
   await page.close();
 }
 
+// Repères : les tailles d'écran (mobile → desktop) et le thème sombre.
+for (const [largeur, hauteur] of [[360, 780], [768, 1024], [1440, 900]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/reperes-${largeur}.png`, fullPage: true });
+  console.log('capture', `reperes-${largeur}`);
+  await page.close();
+}
+const sombre = await navigateur.newPage();
+await sombre.setViewport({ width: 1440, height: 900 });
+await sombre.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+await sombre.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+await sombre.screenshot({ path: 'captures/reperes-sombre.png', fullPage: true });
+console.log('capture reperes-sombre');
+await sombre.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);

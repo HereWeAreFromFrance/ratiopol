@@ -42,6 +42,7 @@ export { DepotMemoire } from './depot-memoire';
 export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
 export { echappe, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
 export { BUDGET_ETAT, FINANCES_PUBLIQUES } from './reperes';
+export { THEMES } from './themes';
 export type { Assets } from './rendu';
 
 export interface OptionsServeur {
