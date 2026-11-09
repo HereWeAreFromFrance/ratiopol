@@ -11,7 +11,7 @@ import { MOTIFS_SIGNALEMENT } from './depot';
 import type { Erreurs, ValeursBrutes } from './gabarit';
 import { BORNES } from './gabarit';
 import { NIVEAUX, THEMES, themeParId, niveauParId } from './themes';
-import { BUDGET_ETAT, FINANCES_PUBLIQUES, SOURCES_REPERES, type Poste } from './reperes';
+import { BUDGET_ETAT, FINANCES_PUBLIQUES, SOURCES_REPERES, ÉVOLUTION, type Poste } from './reperes';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -42,8 +42,11 @@ function squelette(opts: {
   contenu: string;
   assets: Assets;
   corpsSup?: string;
+  /** Feuille CSS supplémentaire, même origine (la CSP interdit le style
+   *  inline, pas une feuille servie par le site lui-même). */
+  cssSup?: string;
 }): string {
-  const { titre, description, contenu, assets } = opts;
+  const { titre, description, contenu, assets, cssSup } = opts;
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -52,6 +55,7 @@ function squelette(opts: {
 <title>${e(titre)}</title>
 <meta name="description" content="${e(description)}">
 <link rel="stylesheet" href="${e(assets.css)}">
+${cssSup ? `<link rel="stylesheet" href="${e(cssSup)}">` : ''}
 <link rel="icon" href="/statique/favicon.svg" type="image/svg+xml">
 </head>
 <body>
@@ -186,20 +190,20 @@ export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soute
 /* ------------------------------------------------------------------ */
 
 /** Une ligne poste + barre proportionnelle. La barre est relative au plus
- *  gros poste (lisibilité) ; la part affichée est relative à totalPourPart,
- *  ou absente quand un total n'a pas de sens (sous-secteurs qui se
- *  chevauchent). Un poste avec thème devient un lien vers les idées de ce
- *  thème — la donnée reste la première information du lien. */
-function lignesPostes(postes: Poste[], totalPourPart: number | null): string {
+ *  gros poste (lisibilité) ; sa largeur vient de la feuille générée
+ *  (préfixe + index — la CSP interdit le style inline). La part affichée
+ *  est relative à totalPourPart, ou absente quand un total n'a pas de sens
+ *  (sous-secteurs qui se chevauchent). Un poste avec thème devient un lien
+ *  vers les idées de ce thème — la donnée reste la première information. */
+function lignesPostes(postes: Poste[], totalPourPart: number | null, préfixe: string): string {
   const plusGros = Math.max(...postes.map((p) => p.mds));
   return postes
-    .map((p) => {
+    .map((p, i) => {
       const part = totalPourPart === null ? '' : ` · ${Math.round((p.mds / totalPourPart) * 100)}&nbsp;%`;
-      const largeur = Math.max(1, (p.mds / plusGros) * 100).toFixed(1);
       const theme = p.theme ? themeParId(p.theme) : undefined;
       const corps = `
   <div class="reperes-ligne-tete"><span class="reperes-ligne-nom">${e(p.nom)}</span><span class="reperes-ligne-valeur">${formatteurMds.format(p.mds)}&nbsp;Md€${part}</span></div>
-  <div class="reperes-piste"><div class="reperes-plein" style="width:${largeur}%"></div></div>
+  <div class="reperes-piste"><div class="reperes-plein rcw-${préfixe}${i}"></div></div>
   ${theme ? `<span class="reperes-ligne-theme">${e(theme.nom)}&nbsp;→</span>` : ''}`;
       if (!theme) return `<div class="reperes-ligne">${corps}
 </div>`;
@@ -226,9 +230,168 @@ function statRepere(libelle: string, valeur: string, detail: string): string {
 </div>`;
 }
 
-export function pageReperes(assets: Assets): string {
+/** La couleur de série d'un poste : les six premiers, dans l'ordre publié,
+ *  prennent les slots de la palette (l'ordre des slots est le mécanisme
+ *  anti-confusion daltonienne — il ne se recycle pas) ; les suivants
+ *  partagent le neutre « reste ». Chaque part reste nommée et chiffrée en
+ *  texte dans la légende : la couleur ne porte jamais l'information seule. */
+function couleurSerie(index: number): string {
+  return index < 6 ? `var(--r-serie-${index + 1})` : 'var(--r-serie-neutre)';
+}
+
+/** Le disque du camembert : conic-gradient calculé côté serveur. Chaque
+ *  part est séparée de sa voisine par un filet papier — la règle des
+ *  espaces entre pleins. La valeur atterrit dans la feuille générée, pas
+ *  dans un style inline : la CSP du site les interdit. */
+function cameCercle(postes: Poste[]): string {
+  const somme = postes.reduce((s, p) => s + p.mds, 0);
+  const stops: string[] = [];
+  let cum = 0;
+  postes.forEach((p, i) => {
+    const part = (p.mds / somme) * 100;
+    const fin = cum + part;
+    const filet = Math.min(0.3, part / 4);
+    stops.push(`${couleurSerie(i)} ${cum.toFixed(2)}% ${(fin - filet).toFixed(2)}%`);
+    stops.push(`var(--r-papier) ${(fin - filet).toFixed(2)}% ${fin.toFixed(2)}%`);
+    cum = fin;
+  });
+  return `conic-gradient(from -90deg, ${stops.join(', ')})`;
+}
+
+/** La feuille de données de /reperes, servie par /reperes.css : une classe
+ *  par poste (couleur de série, largeur de barre) et une par camembert (le
+ *  gradient). Ce sont des DONNÉES de graphique — elles vivent dans une
+ *  feuille générée et pas dans page.css (qui ne contient que du design), ni
+ *  en attribut style (bloqué par la CSP `default-src 'self'`). Calculée une
+ *  fois : les données sont des constantes de module. */
+let feuilleReperesCache: string | null = null;
+
+export function feuilleReperes(): string {
+  if (feuilleReperesCache) return feuilleReperesCache;
+  const règles: string[] = [];
+  const liste = (préfixe: string, postes: Poste[]) => {
+    const plusGros = Math.max(...postes.map((p) => p.mds));
+    postes.forEach((p, i) => {
+      const largeur = Math.max(1, (p.mds / plusGros) * 100).toFixed(1).replace(/\.0$/, '');
+      règles.push(`.rcc-${préfixe}${i} { background: ${couleurSerie(i)}; }`);
+      règles.push(`.rcw-${préfixe}${i} { width: ${largeur}%; }`);
+    });
+    règles.push(`.rcc-came-${préfixe} { background: ${cameCercle(postes)}; }`);
+  };
+  liste('d', [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses]);
+  liste('r', BUDGET_ETAT.recettesFiscales);
+  liste('s', FINANCES_PUBLIQUES.sousSecteurs);
+  // Les deux lignes de la courbe d'évolution : une classe pour le trait
+  // (fill laissé à l'attribut fill="none" — le CSS des classes écraserait
+  // sinon l'attribut et remplirait l'aire sous la courbe), une pour les
+  // points.
+  règles.push('.rcv-d-trait { stroke: var(--r-serie-1); }');
+  règles.push('.rcv-r-trait { stroke: var(--r-serie-2); }');
+  règles.push('.rcv-d { fill: var(--r-serie-1); }');
+  règles.push('.rcv-r { fill: var(--r-serie-2); }');
+  feuilleReperesCache = règles.join('\n');
+  return feuilleReperesCache;
+}
+
+/** La vue camembert d'une liste de postes : le disque + la légende complète
+ *  (tous les postes, montants et parts en texte, lignes cliquables vers le
+ *  thème — comme les barres). */
+function cameDe(postes: Poste[], totalPourPart: number | null, préfixe: string): string {
+  const legende = postes
+    .map((p, i) => {
+      const theme = p.theme ? themeParId(p.theme) : undefined;
+      // totalPourPart nul = sous-secteurs qui se chevauchent : la part n'a
+      // pas de sens, elle n'est pas affichée — le montant Md€ reste.
+      const part = totalPourPart === null ? '' : ` · ${Math.round((p.mds / totalPourPart) * 100)}&nbsp;%`;
+      const contenu = `
+      <span class="reperes-point rcc-${préfixe}${i}"></span>
+      <span class="reperes-legend-nom">${e(p.nom)}</span>
+      <span class="reperes-legend-valeur">${formatteurMds.format(p.mds)}&nbsp;Md€${part}</span>
+      ${theme ? `<span class="reperes-ligne-theme">${e(theme.nom)}&nbsp;→</span>` : ''}`;
+      return theme
+        ? `<li><a class="reperes-legend-ligne" href="/theme/${e(p.theme!)}">${contenu}
+      </a></li>`
+        : `<li><div class="reperes-legend-ligne">${contenu}
+      </div></li>`;
+    })
+    .join('\n');
+  return `<div class="reperes-came">
+  <div class="reperes-came-cercle rcc-came-${préfixe}" role="img"
+       aria-label="Parts de chaque poste — la légende à côté les nomme et les chiffre toutes"></div>
+  <ul class="reperes-legend">
+${legende}
+  </ul>
+</div>`;
+}
+
+/** La courbe d'évolution : SVG inline généré côté serveur, lisible sans
+ *  JavaScript, la valeur de chaque point est écrite (pas de survol). Une
+ *  seule échelle — jamais de double axe. */
+function courbeÉvolution(): string {
+  const ev = ÉVOLUTION;
+  const gauche = 56;
+  const droite = 584;
+  const haut = 24;
+  const bas = 304;
+  const yDe = (v: number) => bas - (v - 50) * ((bas - haut) / 10);
+  const xDe = (i: number) => gauche + (i * (droite - gauche)) / (ev.années.length - 1);
+  const ligne = (série: number[], classe: string) =>
+    `<polyline class="${classe}" fill="none" stroke-width="2" points="${série
+      .map((v, i) => `${xDe(i).toFixed(1)},${yDe(v).toFixed(1)}`)
+      .join(' ')}"/>`;
+  const points = (série: number[], classe: string, étiquetteAuDessus: boolean) =>
+    série
+      .map((v, i) => {
+        const x = xDe(i);
+        const y = yDe(v);
+        // Le premier point est près de l'axe des ordonnées : son étiquette
+        // part à droite pour ne pas chevaucher les textes de la grille.
+        const ancre = i === 0 ? 'start' : 'middle';
+        const étiquetteX = (i === 0 ? x + 9 : x).toFixed(1);
+        const texte = (y + (étiquetteAuDessus ? -10 : 22)).toFixed(1);
+        return `<circle class="${classe}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>
+    <text class="reperes-courbe-etiquette" x="${étiquetteX}" y="${texte}" text-anchor="${ancre}">${formatteurMds.format(v)}</text>`;
+      })
+      .join('\n');
+  const grille = [50, 52, 54, 56, 58, 60]
+    .map((v) => {
+      const y = yDe(v);
+      return `<line class="reperes-courbe-grille" x1="${gauche}" y1="${y.toFixed(1)}" x2="${droite}" y2="${y.toFixed(1)}"/>
+    <text class="reperes-courbe-axe" x="${gauche - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end">${v}&nbsp;%</text>`;
+    })
+    .join('\n');
+  const années = ev.années
+    .map((a, i) => `<text class="reperes-courbe-axe" x="${xDe(i).toFixed(1)}" y="328" text-anchor="middle">${a}</text>`)
+    .join('\n');
+  return `<svg class="reperes-courbe" viewBox="0 0 640 340" role="img"
+     aria-label="Dépenses et recettes publiques en % du PIB, de ${ev.années[0]} à ${ev.années[ev.années.length - 1]} : dépenses ${ev.dépensesPib
+       .map((v) => formatteurMds.format(v))
+       .join(', ')} ; recettes ${ev.recettesPib.map((v) => formatteurMds.format(v)).join(', ')}">
+  ${grille}
+  ${ligne(ev.dépensesPib, 'rcv-d-trait')}
+  ${ligne(ev.recettesPib, 'rcv-r-trait')}
+  ${points(ev.dépensesPib, 'rcv-d', true)}
+  ${points(ev.recettesPib, 'rcv-r', false)}
+  ${années}
+</svg>`;
+}
+
+/** Le sélecteur de vue : deux liens sobres, l'état courant porté par
+ *  aria-current (et stylé). Sans JavaScript : ce sont des liens. */
+function ongletsVue(vue: 'barres' | 'camembert'): string {
+  const onglet = (id: 'barres' | 'camembert', nom: string) =>
+    `<a href="/reperes${id === 'barres' ? '' : `?vue=${id}`}"${vue === id ? ' aria-current="true"' : ''}>${nom}</a>`;
+  return `<div class="reperes-onglets" role="navigation" aria-label="Type de graphique">
+  ${onglet('barres', 'Barres')}
+  ${onglet('camembert', 'Camembert')}
+</div>`;
+}
+
+export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barres'): string {
   const be = BUDGET_ETAT;
   const fp = FINANCES_PUBLIQUES;
+  const ev = ÉVOLUTION;
+  const depensesListe = [...be.depenses, be.autresDepenses];
   const contenu = `
 <div class="conteneur">
   <section class="section">
@@ -247,6 +410,7 @@ export function pageReperes(assets: Assets): string {
     </div>
     <p class="reperes-note">Le budget de l’État, détaillé plus bas, n’est qu’une partie de cet
     ensemble&nbsp;: la Sécurité sociale et les collectivités dépensent davantage que lui.</p>
+    ${ongletsVue(vue)}
   </section>
 
   <section class="section">
@@ -254,9 +418,9 @@ export function pageReperes(assets: Assets): string {
     <p class="reperes-note">Crédits de paiement du budget général — ${be.millésime}. Les missions
     principales sont listées&nbsp;; les autres sont regroupées — rien n’est omis, le total est
     celui de la loi.</p>
-    <div class="reperes-colonnes">
-      ${lignesPostes([...be.depenses, be.autresDepenses], be.totalDepensesMds)}
-    </div>
+    ${vue === 'camembert' ? cameDe(depensesListe, be.totalDepensesMds, 'd') : `<div class="reperes-colonnes">
+      ${lignesPostes(depensesListe, be.totalDepensesMds, 'd')}
+    </div>`}
     ${totalPoste('Total du budget général', be.totalDepensesMds)}
     <p class="reperes-note">Emplois de l’État autorisés&nbsp;:
     ${formatteurEntier.format(be.emploisAutorises)} (équivalents temps plein travaillés).</p>
@@ -269,7 +433,7 @@ export function pageReperes(assets: Assets): string {
     inscrits en dépenses ci-dessus).</p>
     <div class="reperes-recettes">
       <div>
-        ${lignesPostes(be.recettesFiscales, be.totalFiscalesMds)}
+        ${vue === 'camembert' ? cameDe(be.recettesFiscales, be.totalFiscalesMds, 'r') : lignesPostes(be.recettesFiscales, be.totalFiscalesMds, 'r')}
         ${totalPoste('Total des recettes fiscales nettes', be.totalFiscalesMds)}
       </div>
       <div>
@@ -292,9 +456,36 @@ export function pageReperes(assets: Assets): string {
   <section class="section">
     <div class="section-titre"><h2>Qui dépense — sous-secteurs (${fp.année})</h2></div>
     <p class="reperes-note">${e(fp.noteSousSecteurs)}</p>
-    <div class="reperes-colonnes">
-      ${lignesPostes(fp.sousSecteurs, null)}
+    ${vue === 'camembert' ? cameDe(fp.sousSecteurs, null, 's') : `<div class="reperes-colonnes">
+      ${lignesPostes(fp.sousSecteurs, null, 's')}
+    </div>`}
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><h2>Évolution — dépenses et recettes publiques (${ev.années[0]}-${ev.années[ev.années.length - 1]})</h2></div>
+    <p class="reperes-note">En % du PIB, comptes nationaux (source plus bas). La série ne se
+    limite pas à la courbe&nbsp;: chaque valeur est écrite sur le tracé et la table repliable
+    donne les montants.</p>
+    <div class="reperes-courbe-legend">
+      <span><span class="reperes-point rcc-d0"></span> Dépenses publiques</span>
+      <span><span class="reperes-point rcc-r0"></span> Recettes publiques</span>
     </div>
+    ${courbeÉvolution()}
+    <details class="reperes-table-details">
+      <summary>La série complète en table</summary>
+      <div class="reperes-table-scroll">
+        <table class="reperes-table">
+          <thead><tr><th>Année</th><th>Dépenses (% du PIB)</th><th>Recettes (% du PIB)</th><th>Dépenses (Md€)</th><th>Recettes (Md€)</th></tr></thead>
+          <tbody>
+            ${ev.années
+              .map(
+                (a, i) => `<tr><th>${a}</th><td>${formatteurMds.format(ev.dépensesPib[i])}</td><td>${formatteurMds.format(ev.recettesPib[i])}</td><td>${formatteurMds.format(ev.dépensesMds[i])}</td><td>${formatteurMds.format(ev.recettesMds[i])}</td></tr>`
+              )
+              .join('\n')}
+          </tbody>
+        </table>
+      </div>
+    </details>
   </section>
 
   <section class="section">
@@ -315,9 +506,10 @@ export function pageReperes(assets: Assets): string {
   return squelette({
     titre: 'Repères — les chiffres officiels des finances publiques — RatioPol',
     description:
-      'Budget de l’État et finances publiques de la France : dépenses, recettes, déficit, dette. Chiffres officiels, sourcés et datés, sans commentaire.',
+      'Budget de l’État et finances publiques de la France : dépenses, recettes, déficit, dette, évolution. Chiffres officiels, sourcés et datés, sans commentaire.',
     contenu,
     assets,
+    cssSup: '/reperes.css',
   });
 }
 

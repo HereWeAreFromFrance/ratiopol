@@ -77,3 +77,25 @@ consommer de `var()` (limite du langage) — les breakpoints restent
 littéraux, liés au jeton par commentaire. Un aller-retour ergonome ⇄
 contrôleur a précédé la mise en ligne (contraste AA sur l'affordance
 cliquable, jetons, note d'arrondi).
+
+**Complément — vues graphiques et couleurs (même jour).** La page Repères
+offre un **changement de type de graphique sans JavaScript** : onglets-liens
+`?vue=barres` / `?vue=camembert` rendus côté serveur (vue inconnue →
+barres), et une section fixe « Évolution (2021-2025) » tracée en **SVG
+inline** — la seule vraie série temporelle (`ÉVOLUTION`, dépenses/recettes
+publiques en % du PIB, même source Insee), les missions d'une même année ne
+se tracent pas en courbe. Une **palette de six jetons** (`--r-serie-1..6` +
+neutre « reste », clair et sombre, mécanisme de daltonisme commenté) colore
+les parts du camembert et les deux lignes de la courbe ; la couleur ne porte
+jamais l'information seule (légendes textuelles partout). Pas de pourcentage
+sur les sous-secteurs : ils se chevauchent, la note de méthode l'explique.
+
+**Découverte d'architecture** : la CSP (`default-src 'self'`, sans
+`style-src`) **bloque les attributs `style` inline** — les largeurs de
+barres de la première mise en ligne n'ont jamais été appliquées (toutes à
+100 %). Règle qui en découle : **les données de graphique vivent dans une
+feuille CSS générée côté serveur** (`/reperes.css`, même-origine, calculée
+une fois) — jamais d'inline, jamais d'`unsafe-inline`, jamais de JS. La CSP
+du site reste intouchée. (Rappel pour une future passe : quelques styles
+inline historiques hors page Repères — page idée, table admin — sont
+également bloqués, décoratif.)

@@ -97,6 +97,23 @@ await sombre.screenshot({ path: 'captures/reperes-sombre.png', fullPage: true })
 console.log('capture reperes-sombre');
 await sombre.close();
 
+// La vue camembert : desktop, mobile, sombre.
+for (const [largeur, hauteur] of [[1440, 900], [360, 780]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/reperes?vue=camembert', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/reperes-camembert-${largeur}.png`, fullPage: true });
+  console.log('capture', `reperes-camembert-${largeur}`);
+  await page.close();
+}
+const sombreCame = await navigateur.newPage();
+await sombreCame.setViewport({ width: 1440, height: 900 });
+await sombreCame.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+await sombreCame.goto(base + '/reperes?vue=camembert', { waitUntil: 'networkidle0' });
+await sombreCame.screenshot({ path: 'captures/reperes-camembert-sombre.png', fullPage: true });
+console.log('capture reperes-camembert-sombre');
+await sombreCame.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);

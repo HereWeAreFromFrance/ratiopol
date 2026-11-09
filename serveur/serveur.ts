@@ -41,7 +41,7 @@ import { THEMES } from './themes';
 export { DepotMemoire } from './depot-memoire';
 export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
 export { echappe, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
-export { BUDGET_ETAT, FINANCES_PUBLIQUES } from './reperes';
+export { BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION } from './reperes';
 export { THEMES } from './themes';
 export type { Assets } from './rendu';
 
@@ -280,8 +280,18 @@ ${urls}
       envoieTexte(res, 200, rendu.pageRecherche(q, idees, assets));
       return;
     }
+    // La feuille de données des graphiques de /reperes (la CSP interdit le
+    // style inline : les valeurs calculées passent par cette feuille même
+    // origine, que la page lie dans son head).
+    if (methode === 'GET' && chemin === '/reperes.css') {
+      envoieTexte(res, 200, rendu.feuilleReperes(), 'text/css; charset=utf-8');
+      return;
+    }
     if (methode === 'GET' && chemin === '/reperes') {
-      envoieTexte(res, 200, rendu.pageReperes(assets));
+      // Vue du graphique : lien ?vue=camembert, défaut barres — tout inconnu
+      // retombe sur le défaut (pas de page cassée par un mauvais lien).
+      const vue = url.searchParams.get('vue') === 'camembert' ? 'camembert' : 'barres';
+      envoieTexte(res, 200, rendu.pageReperes(assets, vue));
       return;
     }
     if (methode === 'GET' && chemin === '/apropos') {

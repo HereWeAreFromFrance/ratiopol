@@ -118,6 +118,25 @@ export const FINANCES_PUBLIQUES = {
 };
 
 /* ------------------------------------------------------------------ */
+/* L'évolution (la série tracée en courbe)                            */
+/* ------------------------------------------------------------------ */
+
+/** Cinq dernières années des comptes nationaux, en % du PIB : c'est la
+ *  seule vraie série temporelle de la page (les missions d'une même année
+ *  ne se tracent pas en courbe). La courbe trace ces montants, elle ne les
+ *  remplace pas : les chiffres de 2025 restent ceux du bloc « L'essentiel ».
+ *  Même source et même millésime que FINANCES_PUBLIQUES. */
+export const ÉVOLUTION = {
+  /** Série en % du PIB, du plus ancien au plus récent. */
+  années: [2021, 2022, 2023, 2024, 2025],
+  dépensesPib: [59.5, 58.4, 56.8, 57.0, 57.3],
+  recettesPib: [52.9, 53.7, 51.4, 51.2, 52.2],
+  /** Série en Md€, pour lire les montants sans changer de source. */
+  dépensesMds: [1491.4, 1550.3, 1608.3, 1672.7, 1714.1],
+  recettesMds: [1326.2, 1424.4, 1456.4, 1503.5, 1562.5],
+};
+
+/* ------------------------------------------------------------------ */
 /* Les sources                                                        */
 /* ------------------------------------------------------------------ */
 

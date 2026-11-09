@@ -754,3 +754,189 @@ a.reperes-ligne:hover .reperes-ligne-theme {
   line-height: var(--r-txt-lg-h);
   max-width: var(--r-largeur-lecture);
 }
+
+/* Le sélecteur de vue : des liens sobres, l'état courant porté par
+   aria-current (stylé ici) — la page reste 100 % sans JavaScript. */
+.reperes-onglets {
+  display: flex;
+  gap: var(--r-esp-2);
+  margin-top: var(--r-esp-8);
+}
+
+.reperes-onglets a {
+  font-size: var(--r-txt-sm);
+  font-weight: var(--r-graisse-moyenne);
+  color: var(--r-encre-douce);
+  text-decoration: none;
+  padding: var(--r-esp-2) var(--r-esp-5);
+  border: var(--r-esp-1p) solid var(--r-filet-fort);
+  border-radius: var(--r-rayon-md);
+  transition: background var(--r-duree-instant) var(--r-courbe-sortie),
+    border-color var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+.reperes-onglets a:hover {
+  color: var(--r-accent);
+  border-color: var(--r-accent);
+}
+
+.reperes-onglets a[aria-current='true'] {
+  background: var(--r-accent-doux);
+  border-color: var(--r-accent);
+  color: var(--r-accent);
+  font-weight: var(--r-graisse-appuyee);
+}
+
+/* Vue camembert : le disque (conic-gradient calculé côté serveur, trou
+   central en papier) + la légende complète à côté. Le disque et sa légende
+   s'empilent sur mobile, se placent côte à côte sur grand écran. */
+.reperes-came {
+  display: grid;
+  gap: var(--r-esp-8);
+  align-items: center;
+  margin-block: var(--r-esp-6);
+}
+
+@media (min-width: 56rem) {
+  .reperes-came {
+    grid-template-columns: minmax(0, var(--r-came-max)) 1fr;
+  }
+}
+
+.reperes-came-cercle {
+  width: 100%;
+  /* ratio carré : le disque reste rond quelle que soit la largeur */
+  aspect-ratio: 1;
+  border-radius: 50%;
+  position: relative;
+}
+
+.reperes-came-cercle::before {
+  content: '';
+  position: absolute;
+  inset: 27%;
+  background: var(--r-papier);
+  border-radius: 50%;
+}
+
+.reperes-legend {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--r-esp-1);
+}
+
+.reperes-legend-ligne {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: var(--r-esp-3);
+  align-items: baseline;
+  padding: var(--r-esp-2) var(--r-esp-3);
+  margin-inline: calc(-1 * var(--r-esp-3));
+  border-radius: var(--r-rayon-sm);
+}
+
+a.reperes-legend-ligne {
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+a.reperes-legend-ligne:hover {
+  background: var(--r-papier-creux);
+}
+
+a.reperes-legend-ligne:hover .reperes-ligne-theme {
+  color: var(--r-accent);
+  text-decoration: underline;
+}
+
+.reperes-legend-ligne .reperes-ligne-theme {
+  grid-column: 2 / -1;
+}
+
+.reperes-point {
+  width: var(--r-esp-3);
+  height: var(--r-esp-3);
+  border-radius: var(--r-rayon-plein);
+  flex: none;
+  align-self: center;
+}
+
+.reperes-legend-nom {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.reperes-legend-valeur {
+  font-variant-numeric: tabular-nums;
+  color: var(--r-encre-douce);
+  white-space: nowrap;
+}
+
+/* La courbe d'évolution : SVG inline généré côté serveur. Le texte du SVG
+   porte les jetons de texte (jamais la couleur de série sur du texte). */
+.reperes-courbe {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.reperes-courbe-grille {
+  stroke: var(--r-filet);
+  stroke-width: 1;
+}
+
+.reperes-courbe-etiquette {
+  font-size: var(--r-txt-xs);
+  fill: var(--r-encre);
+  font-variant-numeric: tabular-nums;
+}
+
+.reperes-courbe-axe {
+  font-size: var(--r-txt-xs);
+  fill: var(--r-encre-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.reperes-courbe-legend {
+  display: flex;
+  gap: var(--r-esp-6);
+  flex-wrap: wrap;
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+  margin-block: var(--r-esp-4);
+}
+
+.reperes-courbe-legend .reperes-point {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.reperes-table-details {
+  margin-top: var(--r-esp-6);
+  font-size: var(--r-txt-sm);
+}
+
+.reperes-table-scroll {
+  overflow-x: auto;
+}
+
+.reperes-table-details summary {
+  cursor: pointer;
+  color: var(--r-accent);
+}
+
+.reperes-table {
+  margin-top: var(--r-esp-4);
+  border-collapse: collapse;
+  font-size: var(--r-txt-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.reperes-table th,
+.reperes-table td {
+  text-align: left;
+  padding: var(--r-esp-2) var(--r-esp-4);
+  border-bottom: var(--r-esp-1p) solid var(--r-filet);
+}
