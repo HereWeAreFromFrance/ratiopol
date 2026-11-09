@@ -68,6 +68,7 @@ await mkdir('captures', { recursive: true });
 const pages = [
   ['accueil', base + '/', false],
   ['proposer', base + '/proposer', false],
+  ['reperes', base + '/reperes', true],
   ['idee', base + '/idee/' + slugs[0], true],
 ];
 for (const [nom, url, pleine] of pages) {

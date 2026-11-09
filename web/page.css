@@ -558,3 +558,128 @@ main {
   border-radius: var(--r-rayon-sm);
   padding: var(--r-esp-3) var(--r-esp-4);
 }
+
+/* 9. REPÈRES -----------------------------------------------------------------
+   Les chiffres officiels : barres proportionnelles en pur CSS (aucune
+   image, aucun JS), cartes de synthèse, notes de méthode. La largeur des
+   barres est une donnée, pas un style : elle arrive en attribut style,
+   calculée côté serveur. */
+
+.reperes-note {
+  margin-block: var(--r-esp-4);
+  font-size: var(--r-txt-xs);
+  color: var(--r-encre-legere);
+}
+
+.reperes-ligne {
+  margin-block: var(--r-esp-3);
+}
+
+.reperes-ligne-tete {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  font-size: var(--r-txt-sm);
+}
+
+.reperes-ligne-tete span:last-child {
+  font-variant-numeric: tabular-nums;
+  color: var(--r-encre-douce);
+  white-space: nowrap;
+}
+
+.reperes-piste {
+  margin-top: var(--r-esp-1);
+  height: var(--r-esp-2);
+  background: var(--r-papier-creux);
+  border-radius: var(--r-rayon-plein);
+}
+
+.reperes-plein {
+  height: 100%;
+  background: var(--r-accent);
+  border-radius: inherit;
+}
+
+.reperes-total {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  margin-top: var(--r-esp-4);
+  padding-top: var(--r-esp-3);
+  border-top: var(--r-esp-1p) solid var(--r-filet-fort);
+  font-size: var(--r-txt-sm);
+  font-weight: var(--r-graisse-appuyee);
+}
+
+.reperes-total span:last-child {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reperes-calcul {
+  margin-block: var(--r-esp-6);
+  display: grid;
+  gap: var(--r-esp-2);
+}
+
+.reperes-calcul-ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--r-esp-4);
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+}
+
+.reperes-calcul-ligne span:last-child {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reperes-stats {
+  margin-block: var(--r-esp-6);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--r-esp-4);
+}
+
+.reperes-stat {
+  display: grid;
+  gap: var(--r-esp-05);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-4) var(--r-esp-5);
+}
+
+.reperes-stat-libelle {
+  font-size: var(--r-txt-xs);
+  letter-spacing: var(--r-interlettre-majuscules);
+  text-transform: uppercase;
+  color: var(--r-encre-douce);
+}
+
+.reperes-stat-valeur {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  font-weight: var(--r-graisse-appuyee);
+  font-variant-numeric: tabular-nums;
+}
+
+.reperes-stat-detail {
+  font-size: var(--r-txt-xs);
+  color: var(--r-encre-legere);
+}
+
+.reperes-sous-titre {
+  margin-top: var(--r-esp-8);
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-sm);
+  font-weight: var(--r-graisse-appuyee);
+}
+
+.reperes-appel {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+}

@@ -41,6 +41,7 @@ import { THEMES } from './themes';
 export { DepotMemoire } from './depot-memoire';
 export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
 export { echappe, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
+export { BUDGET_ETAT, FINANCES_PUBLIQUES } from './reperes';
 export type { Assets } from './rendu';
 
 export interface OptionsServeur {
@@ -178,6 +179,7 @@ export function creeServeur(opts: OptionsServeur): Server {
   <url><loc>${origine}/</loc></url>
   <url><loc>${origine}/proposer</loc></url>
   <url><loc>${origine}/themes</loc></url>
+  <url><loc>${origine}/reperes</loc></url>
 ${urls}
 </urlset>`;
   }
@@ -275,6 +277,10 @@ ${urls}
       const q = (url.searchParams.get('q') ?? '').slice(0, 100).trim();
       const idees = q === '' ? [] : await depot.liste({ recherche: q, limite: 50 });
       envoieTexte(res, 200, rendu.pageRecherche(q, idees, assets));
+      return;
+    }
+    if (methode === 'GET' && chemin === '/reperes') {
+      envoieTexte(res, 200, rendu.pageReperes(assets));
       return;
     }
     if (methode === 'GET' && chemin === '/apropos') {

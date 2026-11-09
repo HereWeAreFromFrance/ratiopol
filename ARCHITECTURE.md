@@ -43,7 +43,9 @@ redirections 303 : le site marche sans JavaScript.
 Fonctions retournant du HTML servies telles quelles. Tout contenu de
 visiteur passe par `echappe()` — anti-XSS par construction, vérifié par test.
 Design éditorial : pile de polices système, une couleur d'accent, colonne de
-68ch, thème sombre par `prefers-color-scheme`.
+68ch, thème sombre par `prefers-color-scheme`. Les chiffres de la page
+Repères vivent dans `reperes.ts` — sources officielles nommées, mis à jour à
+la main à chaque loi de finances (règles dans `docs/decisions.md`).
 
 ### `serveur/depot.ts` + `depot-memoire.ts` + `postgres.ts`
 Le serveur ne connaît que l'interface `Depot`. `DepotMemoire` pour les tests

@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteMotDePasse } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -202,6 +202,12 @@ test('pages secondaires, recherche, thème, fichiers divers', async () => {
   assert.equal((await requete(port, 'GET', '/theme/logement')).status, 200);
   assert.equal((await requete(port, 'GET', '/theme/inconnu')).status, 404);
   assert.equal((await requete(port, 'GET', '/apropos')).status, 200);
+  const reperes = await requete(port, 'GET', '/reperes');
+  assert.equal(reperes.status, 200);
+  // La page porte les chiffres et renvoie vers la source officielle.
+  assert.match(reperes.corps, /Enseignement scolaire/);
+  assert.match(reperes.corps, /budget\.gouv\.fr/);
+  assert.match(reperes.corps, /insee\.fr/);
   assert.equal((await requete(port, 'GET', '/moderation')).status, 200);
   assert.equal((await requete(port, 'GET', '/mentions')).status, 200);
   assert.equal((await requete(port, 'GET', '/_vu')).status, 204);
@@ -265,4 +271,33 @@ test('un slug de remontée ne sort jamais du répertoire statique', async () => 
   const r = await requete(port, 'GET', '/statique/../../serveur/serveur.ts');
   assert.equal(r.status, 404);
   ferme();
+});
+
+test('les repères budgétaires restent cohérents', () => {
+  // Ce test protège la mise à jour annuelle de serveur/reperes.ts : si une
+  // part ne tient plus dans son total, un montant a été mal recopié de la
+  // source officielle. Tolérance 0,15 Md€ : les totaux publiés sont arrondis.
+  const proche = (a, b) => Math.abs(a - b) < 0.15;
+
+  // Les dépenses de l'État : missions principales + autres = total de la loi.
+  const be = BUDGET_ETAT;
+  const sommeDepenses = [...be.depenses, be.autresDepenses].reduce((s, p) => s + p.mds, 0);
+  assert.ok(proche(sommeDepenses, be.totalDepensesMds), `dépenses de l'État : ${sommeDepenses} ≠ ${be.totalDepensesMds}`);
+
+  // Les recettes : fiscales + non fiscales − prélèvements + fonds de concours = recettes nettes.
+  const sommeFiscales = be.recettesFiscales.reduce((s, p) => s + p.mds, 0);
+  assert.ok(proche(sommeFiscales, be.totalFiscalesMds), `recettes fiscales : ${sommeFiscales} ≠ ${be.totalFiscalesMds}`);
+  const nettes = be.totalFiscalesMds + be.recettesNonFiscalesMds
+    - be.prélèvements.reduce((s, p) => s + p.mds, 0) + be.fondsDeConcoursMds;
+  assert.ok(proche(nettes, be.recettesNettesMds), `recettes nettes : ${nettes} ≠ ${be.recettesNettesMds}`);
+  // Le solde couvre TOUS les budgets (général, annexes, comptes spéciaux) :
+  // il est donc proche, mais pas égal, au solde du seul budget général.
+  const soldeBudgetGeneral = be.recettesNettesMds - be.chargesNettesMds;
+  assert.ok(Math.abs(soldeBudgetGeneral - be.soldeMds) < 2, `solde : ${be.soldeMds} trop loin du solde du budget général (${soldeBudgetGeneral})`);
+
+  // Les administrations publiques : déficit = dépenses − recettes.
+  const fp = FINANCES_PUBLIQUES;
+  assert.ok(proche(fp.dépensesMds - fp.recettesMds, fp.déficitMds), `déficit : ${fp.dépensesMds} − ${fp.recettesMds} ≠ ${fp.déficitMds}`);
+  // Le solde de l'État est négatif : les chiffres le disent, pas le contraire.
+  assert.ok(be.soldeMds < 0 && fp.déficitMds > 0);
 });

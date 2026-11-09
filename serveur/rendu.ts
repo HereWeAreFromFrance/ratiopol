@@ -11,6 +11,7 @@ import { MOTIFS_SIGNALEMENT } from './depot';
 import type { Erreurs, ValeursBrutes } from './gabarit';
 import { BORNES } from './gabarit';
 import { NIVEAUX, THEMES, themeParId, niveauParId } from './themes';
+import { BUDGET_ETAT, FINANCES_PUBLIQUES, SOURCES_REPERES, type Poste } from './reperes';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -20,6 +21,8 @@ export interface Assets {
 }
 
 const formatteurDate = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' });
+const formatteurMds = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const formatteurEntier = new Intl.NumberFormat('fr-FR');
 
 function dateFr(d: Date): string {
   return formatteurDate.format(d);
@@ -58,6 +61,7 @@ function squelette(opts: {
     <nav class="entete-nav" aria-label="Principale">
       <a href="/proposer">Proposer une idée</a>
       <a href="/themes">Thèmes</a>
+      <a href="/reperes">Repères</a>
       <a href="/apropos">À propos</a>
     </nav>
   </div>
@@ -170,10 +174,133 @@ export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soute
       <h2>${e(nom)}</h2>
       <a href="/theme/${e(idTheme)}?tri=${lienTri}">${texteTri} →</a>
     </div>
+    ${idTheme === 'impots' ? '<p class="reperes-note">Les chiffres officiels du budget de l’État et des finances publiques sont sur la page <a href="/reperes">Repères</a>.</p>' : ''}
     ${grille(idees)}
   </section>
 </div>`;
   return squelette({ titre: `${nom} — RatioPol`, description: `Idées citoyennes sur ${nom}.`, contenu, assets });
+}
+
+/* ------------------------------------------------------------------ */
+/* Repères (les chiffres officiels des finances publiques)            */
+/* ------------------------------------------------------------------ */
+
+/** Une ligne poste + barre proportionnelle. La barre est relative au plus
+ *  gros poste (lisibilité) ; la part affichée est relative à totalPourPart,
+ *  ou absente quand un total n'a pas de sens (sous-secteurs qui se
+ *  chevauchent). */
+function lignesPostes(postes: Poste[], totalPourPart: number | null): string {
+  const plusGros = Math.max(...postes.map((p) => p.mds));
+  return postes
+    .map((p) => {
+      const part = totalPourPart === null ? '' : ` · ${Math.round((p.mds / totalPourPart) * 100)}&nbsp;%`;
+      const largeur = Math.max(1, (p.mds / plusGros) * 100).toFixed(1);
+      return `<div class="reperes-ligne">
+  <div class="reperes-ligne-tete"><span>${e(p.nom)}</span><span>${formatteurMds.format(p.mds)}&nbsp;Md€${part}</span></div>
+  <div class="reperes-piste"><div class="reperes-plein" style="width:${largeur}%"></div></div>
+</div>`;
+    })
+    .join('\n');
+}
+
+function totalPoste(libelle: string, mds: number): string {
+  return `<div class="reperes-total"><span>${e(libelle)}</span><span>${formatteurMds.format(mds)}&nbsp;Md€</span></div>`;
+}
+
+function ligneCalcul(libelle: string, mds: number, signe: '+' | '−' | ''): string {
+  const montant = signe === '' ? formatteurMds.format(mds) : `${signe}${formatteurMds.format(mds)}`;
+  return `<div class="reperes-calcul-ligne"><span>${e(libelle)}</span><span>${montant}&nbsp;Md€</span></div>`;
+}
+
+function statRepere(libelle: string, valeur: string, detail: string): string {
+  return `<div class="reperes-stat">
+  <span class="reperes-stat-libelle">${e(libelle)}</span>
+  <span class="reperes-stat-valeur">${e(valeur)}</span>
+  <span class="reperes-stat-detail">${e(detail)}</span>
+</div>`;
+}
+
+export function pageReperes(assets: Assets): string {
+  const be = BUDGET_ETAT;
+  const fp = FINANCES_PUBLIQUES;
+  const contenu = `
+<div class="conteneur lecture">
+  <section class="section">
+    <h1 class="page-titre">Repères</h1>
+    <p class="page-sous-titre">Les chiffres officiels des finances publiques françaises, avec leur
+    source et leur date. Aucun commentaire&nbsp;: ce sont des repères partagés, pour poser un
+    problème — et surtout son arbitrage — sur des bases solides.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><h2>Budget de l’État — dépenses (${be.année})</h2></div>
+    <p class="reperes-note">Crédits de paiement du budget général — ${be.millésime}. Les missions
+    principales sont listées&nbsp;; les autres sont regroupées — rien n’est omis, le total est
+    celui de la loi.</p>
+    ${lignesPostes([...be.depenses, be.autresDepenses], be.totalDepensesMds)}
+    ${totalPoste('Total du budget général', be.totalDepensesMds)}
+    <p class="reperes-note">Emplois de l’État autorisés&nbsp;:
+    ${formatteurEntier.format(be.emploisAutorises)} (équivalents temps plein travaillés).</p>
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><h2>Budget de l’État — recettes (${be.année})</h2></div>
+    <p class="reperes-note">Recettes fiscales «&nbsp;nettes&nbsp;»&nbsp;: comptées après
+    remboursements et dégrèvements d’impôts (${formatteurMds.format(be.depenses[0].mds)}&nbsp;Md€,
+    inscrits en dépenses ci-dessus).</p>
+    ${lignesPostes(be.recettesFiscales, be.totalFiscalesMds)}
+    ${totalPoste('Total des recettes fiscales nettes', be.totalFiscalesMds)}
+    <div class="reperes-calcul">
+      ${ligneCalcul('Recettes non fiscales', be.recettesNonFiscalesMds, '')}
+      ${ligneCalcul('Recettes avant prélèvements', be.recettesAvantPrélèvementsMds, '')}
+      ${be.prélèvements.map((p) => ligneCalcul(`Moins&nbsp;: ${p.nom}`, p.mds, '−')).join('\n')}
+      ${ligneCalcul('Plus&nbsp;: fonds de concours', be.fondsDeConcoursMds, '+')}
+      ${totalPoste('Recettes nettes du budget général', be.recettesNettesMds)}
+    </div>
+    <div class="reperes-stats">
+      ${statRepere('Recettes nettes du budget général', `${formatteurMds.format(be.recettesNettesMds)} Md€`, `loi de finances initiale ${be.année}`)}
+      ${statRepere('Charges nettes du budget général', `${formatteurMds.format(be.chargesNettesMds)} Md€`, `loi de finances initiale ${be.année}`)}
+      ${statRepere('Solde de l’État', `${formatteurMds.format(be.soldeMds)} Md€`, 'budget général, budgets annexes et comptes spéciaux')}
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><h2>Toutes les administrations publiques (${fp.année})</h2></div>
+    <p class="reperes-note">Le budget de l’État n’est qu’une partie de l’argent public&nbsp;:
+    la Sécurité sociale et les collectivités dépensent davantage que lui.</p>
+    <div class="reperes-stats">
+      ${statRepere('Dépenses publiques', `${formatteurMds.format(fp.dépensesMds)} Md€`, `${formatteurMds.format(fp.dépensesPib)} % du PIB`)}
+      ${statRepere('Recettes publiques', `${formatteurMds.format(fp.recettesMds)} Md€`, `${formatteurMds.format(fp.recettesPib)} % du PIB`)}
+      ${statRepere('Déficit public', `${formatteurMds.format(fp.déficitMds)} Md€`, `${formatteurMds.format(fp.déficitPib)} % du PIB`)}
+      ${statRepere('Dette publique', `${formatteurEntier.format(fp.detteMds)} Md€`, `${formatteurMds.format(fp.dettePib)} % du PIB au ${fp.detteDate}`)}
+    </div>
+    <h3 class="reperes-sous-titre">Dépenses par sous-secteur (${fp.année})</h3>
+    ${lignesPostes(fp.sousSecteurs, null)}
+    <p class="reperes-note">${e(fp.noteSousSecteurs)}</p>
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><h2>Sources</h2></div>
+    <ul class="liste-simple">
+      ${SOURCES_REPERES.map((s) => `<li><a rel="noopener" href="${e(s.url)}">${e(s.nom)}</a></li>`).join('\n')}
+    </ul>
+    <p class="reperes-note">Les totaux affichés sont ceux publiés par les sources&nbsp;; la somme
+    des montants arrondis peut s’en écarter de 0,1&nbsp;Md€. Cette page est mise à jour à la main
+    à chaque nouvelle loi de finances.</p>
+  </section>
+
+  <section class="section">
+    <p class="reperes-appel">Une idée à partir de ces chiffres&nbsp;?
+    <a href="/proposer">Proposez-la</a> — l’arbitrage est déjà à moitié écrit.</p>
+  </section>
+</div>`;
+  return squelette({
+    titre: 'Repères — les chiffres officiels des finances publiques — RatioPol',
+    description:
+      'Budget de l’État et finances publiques de la France : dépenses, recettes, déficit, dette. Chiffres officiels, sourcés et datés, sans commentaire.',
+    contenu,
+    assets,
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -293,6 +420,8 @@ export function pageProposer(assets: Assets, valeurs?: ValeursBrutes, erreurs?: 
     changement identifiable, dit qui en profite et ce que ça coûte. Ce n'est pas une pétition ni
     un commentaire — c'est ce qu'un élu ou un citoyen pourrait reprendre tel quel. Chaque champ
     est guidé, la longueur est bornée pour vous y aider.</p>
+    <p class="reperes-note">Pour vous appuyer sur des faits&nbsp;: les <a href="/reperes">chiffres
+    officiels du budget</a> (dépenses, recettes, déficit, dette) sont sur la page Repères.</p>
     ${recap}
     <form class="formulaire" method="post" action="/proposer">
       ${champTexte({ nom: 'titre', libelle: 'Titre', aide: 'En une phrase : quoi, pour qui, où. Ex. : « Encadrer les loyers des résidences étudiantes à Paris ».', erreur: erreurs?.titre, valeur: valeur(valeurs, 'titre'), tailleMax: BORNES.titre[1] })}

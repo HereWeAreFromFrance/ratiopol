@@ -26,3 +26,38 @@ réexaminée — sans que ça remette en cause la suite du développement.
 
 **Choix technique concomitant** (doc 05) : développement sur mesure, léger,
 hébergé sur le VPS existant.
+
+## 2026-11-09 — Page « Repères » : les chiffres officiels, sans commentaire
+
+**Décision de Paul** : donner aux visiteurs un contenu objectif d'emblée —
+les chiffres des finances publiques françaises — pour aider à écrire des
+idées concrètes, surtout leur arbitrage.
+
+**La page `/reperes`** (`serveur/reperes.ts` + `rendu.pageReperes`) :
+- le budget de l'État (LFI 2026, loi n° 2026-103 du 19/02/2026) : dépenses
+  par mission, recettes par impôt, solde, emplois autorisés ;
+- les finances publiques complètes (Insee) : dépenses/recettes des
+  administrations publiques et sous-secteurs (État, Sécurité sociale,
+  collectivités, ODAC), déficit 2025, dette au 30/06/2026.
+
+**Les règles d'objectivité** (ce qui distingue des « chiffres pour appuyer
+une opinion ») :
+1. **Un chiffre = une source officielle nommée + un millésime.** Jamais de
+   chiffre nu. Les sources sont liées en bas de page.
+2. **Zéro commentaire.** Aucun adjectif, aucun « c'est beaucoup/trop peu »,
+   aucune conclusion. Les chiffres parlent, le visiteur conclut.
+3. **Aucun biais de sélection.** Les postes principaux ET le total, avec une
+   ligne « autres » exacte — rien n'est soigneusement omis. Les sous-secteurs
+   qui se chevauchent portent une note de méthode plutôt qu'un pourcentage
+   trompeur.
+4. **Mise à jour à la main, une fois par an**, quand la loi de finances de
+   l'année est promulguée. Le test « les repères budgétaires restent
+   cohérents » vérifie que les parts tiennent dans les totaux : s'il saute
+   après une mise à jour, un montant a été mal recopié.
+
+**Conséquences sur le design** : barres proportionnelles en pur CSS (aucune
+image, aucun JS, CSP intacte) ; la largeur d'une barre est une donnée
+calculée côté serveur, pas un style. Renvois depuis le formulaire de dépôt
+et le thème « Impôts & budget » pour fermer la boucle chiffres → idée.
+Un encadré de repères par thème (logement, santé…) est envisagé en v2 —
+chaque thème mériterait ses propres sources, plus lourd à maintenir.
