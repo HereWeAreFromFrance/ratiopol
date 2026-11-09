@@ -68,7 +68,7 @@ ${contenu}
 <footer class="pied">
   <div class="conteneur pied-inner">
     <span>RatioPol — des idées concrètes, pas des slogans.</span>
-    <span><a href="/moderation">Modération</a> · <a href="/mentions">Mentions &amp; données</a></span>
+    <span><a href="/moderation">Modération</a> · <a href="/mentions">Mentions &amp; données</a> · <a href="mailto:contact@ratiopol.fr">contact@ratiopol.fr</a></span>
   </div>
 </footer>
 <script src="${e(assets.js)}" defer></script>
