@@ -100,9 +100,11 @@ export function poseSimulateur(): void {
 
     // Une poignée : le trait pointillé depuis la dernière année publiée,
     // puis le groupe slider — zone de saisie généreuse invisible, anneau
-    // de focus caché, point visible. Positions = attributs cx/cy, jamais
-    // de style inline : la CSP l'interdit.
-    const poignée = (étiquette: string, départ: number, classeTrait: string, classePoint: string): { valeur: () => number } => {
+    // de focus caché, point visible, étiquette vivante. Positions =
+    // attributs cx/cy, jamais de style inline : la CSP l'interdit.
+    // auDessus : l'étiquette vivante se met au-dessus du trait (dépenses)
+    // ou en dessous (recettes), comme les étiquettes officielles du graphe.
+    const poignée = (étiquette: string, départ: number, classeTrait: string, classePoint: string, auDessus: boolean): { valeur: () => number } => {
       const yDépart = yDe(départ);
       const trait = cree('line', { x1: xDernier, y1: yDépart, x2: xHypothèse, y2: yDépart, class: `reperes-sim-trait ${classeTrait}` });
       const g = cree('g', {
@@ -119,7 +121,27 @@ export function poseSimulateur(): void {
       const touche = cree('circle', { cx: xHypothèse, cy: yDépart, r: 36, class: 'reperes-sim-poignee-touche' });
       const anneau = cree('circle', { cx: xHypothèse, cy: yDépart, r: 15, class: 'reperes-sim-poignee-anneau' });
       const point = cree('circle', { cx: xHypothèse, cy: yDépart, r: 8, class: classePoint });
-      g.append(touche, anneau, point);
+      // L'étiquette vivante : le chiffre suit la main, à gauche de la
+      // poignée. Sur mobile, la bande de résultats peut être hors écran
+      // pendant le glissement. Le chiffre et l'unité, rien d'autre ; déjà
+      // annoncé par aria-valuetext, donc masqué aux lecteurs d'écran.
+      // Côté : au-dessus du trait ou en dessous (comme les étiquettes
+      // officielles), mais on bascule de l'autre côté aux extrêmes pour ne
+      // pas mordre sur le haut du graphe ni sur l'étiquette de l'année.
+      const côtéÉtiquette = (y: number): number => {
+        let ye = auDessus ? y - 12 : y + 20;
+        if (auDessus && ye < haut - 2) ye = y + 20;
+        if (!auDessus && ye > bas + 8) ye = y - 12;
+        return ye;
+      };
+      const vivante = cree('text', {
+        class: `reperes-sim-etiquette ${classePoint}`,
+        x: xHypothèse - 14,
+        y: côtéÉtiquette(yDépart),
+        'text-anchor': 'end',
+        'aria-hidden': 'true',
+      }, `${fmt.format(départ)} %`);
+      g.append(touche, anneau, point, vivante);
       svg.append(trait, g);
       let valeur = départ;
       const place = (v: number): void => {
@@ -127,6 +149,8 @@ export function poseSimulateur(): void {
         const y = yDe(v);
         trait.setAttribute('y2', String(y));
         for (const c of [touche, anneau, point]) c.setAttribute('cy', String(y));
+        vivante.setAttribute('y', String(côtéÉtiquette(y)));
+        vivante.textContent = `${fmt.format(v)} %`;
         g.setAttribute('aria-valuenow', v.toFixed(1));
         g.setAttribute('aria-valuetext', `${fmt.format(v)} % du PIB`);
         maj();
@@ -159,7 +183,7 @@ export function poseSimulateur(): void {
       return retour;
     };
 
-    poignée(`Hypothèse ${annéeHypothèse} — dépenses publiques, en % du PIB`, depRéf, 'rcv-d-trait', 'rcv-d');
-    poignée(`Hypothèse ${annéeHypothèse} — recettes publiques, en % du PIB`, recRéf, 'rcv-r-trait', 'rcv-r');
+    poignée(`Hypothèse ${annéeHypothèse} — dépenses publiques, en % du PIB`, depRéf, 'rcv-d-trait', 'rcv-d', true);
+    poignée(`Hypothèse ${annéeHypothèse} — recettes publiques, en % du PIB`, recRéf, 'rcv-r-trait', 'rcv-r', false);
   }
 }

@@ -138,7 +138,8 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
           <span><span class="reperes-point rcc-courbe-d"></span> Dépenses publiques</span>
           <span><span class="reperes-point rcc-courbe-r"></span> Recettes publiques</span>
         </div>
-        ${courbeÉvolution('bornes')}
+        ${courbeÉvolution('bornes', true)}
+        ${simBlocÉvolution(true)}
       </div>
       <div class="accueil-france-cartes">
         ${statRepere('Dépenses publiques', `${formatteurMds.format(FINANCES_PUBLIQUES.dépensesPib)} % du PIB`, `${formatteurMds.format(FINANCES_PUBLIQUES.dépensesMds)} Md€ en ${FINANCES_PUBLIQUES.année}`, '/reperes')}
@@ -458,8 +459,9 @@ function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes', sim = fal
  *  année publiée) ; le JS du navigateur met ces mêmes spans à jour quand
  *  on déplace les poignées (web/simulateur.ts). Aucun adjectif, aucune
  *  couleur de jugement : des nombres et un signe. Sans JavaScript, cette
- *  ligne rendue par le serveur est déjà le résultat complet. */
-function simBlocÉvolution(): string {
+ *  ligne rendue par le serveur est déjà le résultat complet. Version
+ *  compacte pour l'accueil, où la courbe partage l'espace avec les cartes. */
+function simBlocÉvolution(compact = false): string {
   const ev = ÉVOLUTION;
   const dernier = ev.années.length - 1;
   const année = ev.années[dernier];
@@ -471,7 +473,7 @@ function simBlocÉvolution(): string {
   const ecart = solde - solde;
   return `
     <h3 class="reperes-sous-titre">Votre hypothèse pour ${année + 1}</h3>
-    <div class="reperes-sim-resultats">
+    <div class="reperes-sim-resultats${compact ? ' reperes-sim-resultats-compact' : ''}">
       <span>Dépenses&nbsp;: <strong data-sim-dep>${formatteurMds.format(dep)}&nbsp;%</strong></span>
       <span>Recettes&nbsp;: <strong data-sim-rec>${formatteurMds.format(rec)}&nbsp;%</strong></span>
       <span>Solde simulé&nbsp;: <strong data-sim-solde-pib>${formatteurMds.format(solde)}&nbsp;% du PIB</strong></span>

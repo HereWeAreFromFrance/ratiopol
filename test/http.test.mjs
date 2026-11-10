@@ -444,13 +444,25 @@ test('le simulateur publie ses données en attributs, rien en JavaScript', async
     const pib = (FINANCES_PUBLIQUES.dépensesMds / FINANCES_PUBLIQUES.dépensesPib) * 100;
     assert.match(reperes.corps, new RegExp(`data-pib-mds="${pib.toFixed(1)}"`));
     // Sans JavaScript, pas de slider : le rôle n'est posé que par le JS
-    // (web/simulateur.ts), jamais rendu par le serveur.
+    // (web/simulateur.ts), jamais rendu par le serveur — sur aucune page.
     assert.ok(!reperes.corps.includes('role="slider"'));
-    // L'accueil trace la courbe, mais sans hypothèse : pas d'attributs sim.
+    // L'accueil porte le même simulateur que /reperes : mêmes attributs,
+    // même bande au statu quo, même note de méthode.
     const accueil = await requete(port, 'GET', '/');
     assert.equal(accueil.status, 200);
     assert.ok(accueil.corps.includes('<svg'), 'l’accueil trace bien la courbe');
-    assert.ok(!accueil.corps.includes('data-sim'), 'l’accueil ne publie pas le simulateur');
+    assert.match(accueil.corps, /data-sim="1"/);
+    assert.match(accueil.corps, new RegExp(`data-pib-mds="${pib.toFixed(1)}"`));
+    assert.match(accueil.corps, /data-sim-dep>57,3&nbsp;%/);
+    assert.match(accueil.corps, /data-sim-ecart>0,0&nbsp;point</);
+    assert.match(accueil.corps, /Votre hypothèse pour/);
+    assert.match(accueil.corps, /Simulation arithmétique sur vos hypothèses/);
+    assert.ok(!accueil.corps.includes('role="slider"'));
+    // Les cartes chiffrées de l'accueil restent les comptes OFFICIELS
+    // (151,6 Md€ publiés) — distinctes du solde déduit de la bande
+    // (−152,6 Md€) : les deux figures coexistent sans se mélanger.
+    assert.match(accueil.corps, /151,6 Md€ en 2025/);
+    assert.match(accueil.corps, /data-sim-solde-mds>[−-]152,6&nbsp;Md€/);
   } finally {
     ferme();
   }

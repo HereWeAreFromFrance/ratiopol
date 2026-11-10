@@ -154,3 +154,13 @@ note dit que ce n'est ni une prévision ni les chiffres officiels ; le PIB
 constantes de `reperes.ts` en data-attribute (zéro valeur recopiée en JS).
 Sans JavaScript : graphe et bande de résultats au statu quo 2025, rendus par
 le serveur, identiques au codepoint près à la réécriture du JS.
+
+**Complément (même jour)** : le simulateur passe aussi sur l'accueil
+(courbe compacte « La France en chiffres ») — même moteur, mêmes data-* :
+le JS du simulateur n'a pas eu une ligne à changer. Les trois cartes
+chiffrées de l'accueil restent les chiffres officiels 2025 et ne bougent
+jamais avec la simulation ; un test verrouille la coexistence des deux
+figures (151,6 Md€ publiés ≠ −152,6 Md€ simulés, tous deux visibles).
+Pendant le glissement, le % suivi s'affiche sur le graphe à côté de la
+poignée (visible au focus, retiré au blur — piloté par CSS, pas par JS) ;
+le chiffre et l'unité, rien d'autre.

@@ -200,11 +200,11 @@ const litResultats = (page) =>
     ),
   );
 
-const simPage = async (largeur, hauteur, sombre = false) => {
+const simPage = async (largeur, hauteur, sombre = false, chemin = '/reperes') => {
   const page = await navigateur.newPage();
   await page.setViewport({ width: largeur, height: hauteur });
   if (sombre) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
-  await page.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+  await page.goto(base + chemin, { waitUntil: 'networkidle0' });
   return page;
 };
 
@@ -265,6 +265,84 @@ await svgSim.screenshot({ path: 'captures/reperes-sim-glisser-360-graphe.png' })
 await pageMobile.screenshot({ path: 'captures/reperes-sim-glisser-360.png', fullPage: true });
 console.log('capture reperes-sim-glisser-360');
 await pageMobile.close();
+
+// L'accueil porte le même simulateur (mêmes data-*). Sans JavaScript
+// d'abord : non-régression stricte — la page doit rester celle du serveur,
+// bande au statu quo comprise. Puis avec JS : l'étiquette vivante doit
+// suivre la poignée qui bouge.
+for (const [largeur, hauteur] of [[1440, 900], [360, 780]]) {
+  const page = await navigateur.newPage();
+  await page.setJavaScriptEnabled(false);
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/accueil-sim-sans-js-${largeur}.png`, fullPage: true });
+  const graphe = await page.$('svg.reperes-courbe');
+  await graphe.screenshot({ path: `captures/accueil-sim-sans-js-${largeur}-graphe.png` });
+  console.log('capture', `accueil-sim-sans-js-${largeur}`);
+  await page.close();
+}
+
+// Clair 1440, au clavier en deux temps : chaque capture montre l'étiquette
+// vivante de la poignée qui vient de bouger (la poignée garde le focus).
+// Dépenses 57,3 → 56,8 : étiquette attendue « 56,8 % », solde −5,6 %.
+let pageAccueilSim = await simPage(1440, 900, false, '/');
+const poigneesAccueil = await pageAccueilSim.$$('g[role="slider"]');
+await poigneesAccueil[0].evaluate((g) => g.focus());
+for (let i = 0; i < 5; i++) await pageAccueilSim.keyboard.press('ArrowDown');
+console.log('accueil dépenses :', JSON.stringify(await litResultats(pageAccueilSim)));
+const grapheAccueil = await pageAccueilSim.$('svg[data-sim]');
+await grapheAccueil.screenshot({ path: 'captures/accueil-sim-dep-1440-graphe.png' });
+console.log('capture accueil-sim-dep-1440-graphe');
+// Puis recettes 52,2 → 53,7 : étiquette « 53,7 % », solde −1,6 %.
+await poigneesAccueil[1].evaluate((g) => g.focus());
+for (let i = 0; i < 15; i++) await pageAccueilSim.keyboard.press('ArrowUp');
+console.log('accueil complet :', JSON.stringify(await litResultats(pageAccueilSim)));
+await grapheAccueil.screenshot({ path: 'captures/accueil-sim-clavier-1440-graphe.png' });
+await pageAccueilSim.screenshot({ path: 'captures/accueil-sim-clavier-1440.png', fullPage: true });
+console.log('capture accueil-sim-clavier-1440');
+await pageAccueilSim.close();
+
+// Sombre 1440 : dépenses 57,3 → 59,5, recettes 52,2 → 51,2 — solde
+// attendu −8,3 %, −248,3 Md€, écart −3,2 points.
+const pageAccueilSombre = await simPage(1440, 900, true, '/');
+const poigneesAccueilSombre = await pageAccueilSombre.$$('g[role="slider"]');
+await poigneesAccueilSombre[0].evaluate((g) => g.focus());
+for (let i = 0; i < 22; i++) await pageAccueilSombre.keyboard.press('ArrowUp');
+await poigneesAccueilSombre[1].evaluate((g) => g.focus());
+for (let i = 0; i < 10; i++) await pageAccueilSombre.keyboard.press('ArrowDown');
+console.log('accueil sombre :', JSON.stringify(await litResultats(pageAccueilSombre)));
+await (await pageAccueilSombre.$('svg[data-sim]')).screenshot({ path: 'captures/accueil-sim-sombre-1440-graphe.png' });
+await pageAccueilSombre.screenshot({ path: 'captures/accueil-sim-sombre-1440.png', fullPage: true });
+console.log('capture accueil-sim-sombre-1440');
+await pageAccueilSombre.close();
+
+// Mobile 360, au pointeur : on glisse les recettes de 52,2 à 51,2 —
+// l'étiquette reste visible au relâchement (la poignée garde le focus).
+const pageAccueilMobile = await simPage(360, 780, false, '/');
+const slidersAccueil = await pageAccueilMobile.$$('g[role="slider"]');
+const svgAccueil = await pageAccueilMobile.$('svg[data-sim]');
+await slidersAccueil[1].scrollIntoView();
+const boiteSvgAccueil = await svgAccueil.boundingBox();
+const boiteRecAccueil = await slidersAccueil[1].boundingBox();
+const cxAccueil = boiteRecAccueil.x + boiteRecAccueil.width / 2;
+const cyAccueil = boiteRecAccueil.y + boiteRecAccueil.height / 2;
+const cibleAccueil = boiteSvgAccueil.y + (270.4 / 340) * boiteSvgAccueil.height;
+await pageAccueilMobile.mouse.move(cxAccueil, cyAccueil);
+await pageAccueilMobile.mouse.down();
+await pageAccueilMobile.mouse.move(cxAccueil, cibleAccueil, { steps: 8 });
+await pageAccueilMobile.mouse.up();
+console.log('accueil pointeur :', JSON.stringify(await litResultats(pageAccueilMobile)));
+const etiquetteMobile = await pageAccueilMobile.$$eval('.reperes-sim-etiquette', (texts) =>
+  texts.map((t) => {
+    const style = getComputedStyle(t);
+    return { texte: t.textContent, visible: style.opacity === '1' };
+  }),
+);
+console.log('étiquettes :', JSON.stringify(etiquetteMobile));
+await svgAccueil.screenshot({ path: 'captures/accueil-sim-glisser-360-graphe.png' });
+await pageAccueilMobile.screenshot({ path: 'captures/accueil-sim-glisser-360.png', fullPage: true });
+console.log('capture accueil-sim-glisser-360');
+await pageAccueilMobile.close();
 
 await navigateur.close();
 serveur.close();

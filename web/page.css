@@ -1104,3 +1104,32 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .reperes-sim-poignee:focus-visible .reperes-sim-poignee-anneau {
   opacity: 1;
 }
+
+/* L'étiquette vivante de la poignée : le chiffre suit la main à gauche
+   du point — sur mobile la bande de résultats peut être hors écran pendant
+   le glissement. Couleur = celle de sa série (rcv-d / rcv-r), halo couleur
+   papier pour rester lisible sur la grille. Visible quand la poignée a le
+   focus (drag compris : le pointeur la focus), cachée sinon — le graphe
+   reste propre au repos. Le chiffre et l'unité, rien d'autre. */
+.reperes-sim-etiquette {
+  font-size: var(--r-txt-sm);
+  font-weight: var(--r-graisse-appuyee);
+  paint-order: stroke fill;
+  stroke: var(--r-papier);
+  stroke-width: 6;
+  stroke-linejoin: round;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.reperes-sim-poignee:focus .reperes-sim-etiquette {
+  opacity: 1;
+}
+
+/* Variante compacte pour l'accueil, où la courbe partage l'espace avec
+   les cartes officielles. Mêmes valeurs, même note de méthode. */
+.reperes-sim-resultats-compact {
+  margin-block: var(--r-esp-4) var(--r-esp-3);
+  padding: var(--r-esp-2) var(--r-esp-3);
+  gap: var(--r-esp-1) var(--r-esp-4);
+}
