@@ -130,6 +130,34 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
       <a class="bouton bouton-secondaire" href="/themes">Parcourir par thème</a>
     </div>
   </section>
+  <section class="section accueil-france">
+    ${sectionTitre('La France en chiffres', { href: '/reperes', texte: 'Tous les repères' })}
+    <div class="accueil-france-grille">
+      <div class="accueil-france-courbe">
+        <div class="reperes-courbe-legend">
+          <span><span class="reperes-point rcc-d0"></span> Dépenses publiques</span>
+          <span><span class="reperes-point rcc-r0"></span> Recettes publiques</span>
+        </div>
+        ${courbeÉvolution('bornes')}
+      </div>
+      <div class="accueil-france-cartes">
+        ${statRepere('Dépenses publiques', `${formatteurMds.format(FINANCES_PUBLIQUES.dépensesPib)} % du PIB`, `${formatteurMds.format(FINANCES_PUBLIQUES.dépensesMds)} Md€ en ${FINANCES_PUBLIQUES.année}`, '/reperes')}
+        ${statRepere('Déficit public', `${formatteurMds.format(FINANCES_PUBLIQUES.déficitPib)} % du PIB`, `${formatteurMds.format(FINANCES_PUBLIQUES.déficitMds)} Md€ en ${FINANCES_PUBLIQUES.année}`, '/reperes')}
+        ${statRepere('Dette publique', `${formatteurMds.format(FINANCES_PUBLIQUES.dettePib)} % du PIB`, `${formatteurEntier.format(FINANCES_PUBLIQUES.detteMds)} Md€ au ${FINANCES_PUBLIQUES.detteDate}`, '/reperes')}
+      </div>
+    </div>
+    <div class="accueil-france-appel">
+      <p>Un chiffre vous intrigue&nbsp;? Chaque question peut devenir une proposition
+      concrète — la vôtre.</p>
+      <div class="heros-actions">
+        <a class="bouton bouton-secondaire" href="/reperes">Voir tous les repères&nbsp;→</a>
+        <a class="bouton bouton-primaire" href="/proposer">Proposer une idée&nbsp;→</a>
+      </div>
+      <p class="reperes-note">Sources&nbsp;: Insee (comptes nationaux) et loi de finances
+      initiale ${BUDGET_ETAT.année} — le détail complet est sur la page
+      <a href="/reperes">Repères</a>.</p>
+    </div>
+  </section>
   <section class="section">
     ${sectionTitre('Les plus soutenues', { href: '/themes', texte: 'Tous les thèmes' })}
     ${grille(soutenues)}
@@ -144,6 +172,7 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
     description: 'Partagez et lisez des propositions politiques concrètes, anonymement ou non. Gratuit, ouvert à tous en France.',
     contenu,
     assets,
+    cssSup: '/graphiques.css',
   });
 }
 
@@ -222,11 +251,15 @@ function ligneCalcul(libelle: string, mds: number, signe: '+' | '−' | ''): str
   return `<div class="reperes-calcul-ligne"><span>${e(libelle)}</span><span>${montant}&nbsp;Md€</span></div>`;
 }
 
-function statRepere(libelle: string, valeur: string, detail: string): string {
-  return `<div class="reperes-stat">
+function statRepere(libelle: string, valeur: string, detail: string, href?: string): string {
+  const contenu = `
   <span class="reperes-stat-libelle">${e(libelle)}</span>
   <span class="reperes-stat-valeur">${e(valeur)}</span>
-  <span class="reperes-stat-detail">${e(detail)}</span>
+  <span class="reperes-stat-detail">${e(detail)}</span>`;
+  return href
+    ? `<a class="reperes-stat reperes-stat-cliquable" href="${e(href)}">${contenu}
+</a>`
+    : `<div class="reperes-stat">${contenu}
 </div>`;
 }
 
@@ -258,16 +291,17 @@ function cameCercle(postes: Poste[]): string {
   return `conic-gradient(from -90deg, ${stops.join(', ')})`;
 }
 
-/** La feuille de données de /reperes, servie par /reperes.css : une classe
+/** La feuille de données des graphiques (accueil et /reperes), servie par
+ *  /graphiques.css : une classe
  *  par poste (couleur de série, largeur de barre) et une par camembert (le
  *  gradient). Ce sont des DONNÉES de graphique — elles vivent dans une
  *  feuille générée et pas dans page.css (qui ne contient que du design), ni
  *  en attribut style (bloqué par la CSP `default-src 'self'`). Calculée une
  *  fois : les données sont des constantes de module. */
-let feuilleReperesCache: string | null = null;
+let feuilleGraphiquesCache: string | null = null;
 
-export function feuilleReperes(): string {
-  if (feuilleReperesCache) return feuilleReperesCache;
+export function feuilleGraphiques(): string {
+  if (feuilleGraphiquesCache) return feuilleGraphiquesCache;
   const règles: string[] = [];
   const liste = (préfixe: string, postes: Poste[]) => {
     const plusGros = Math.max(...postes.map((p) => p.mds));
@@ -289,8 +323,8 @@ export function feuilleReperes(): string {
   règles.push('.rcv-r-trait { stroke: var(--r-serie-2); }');
   règles.push('.rcv-d { fill: var(--r-serie-1); }');
   règles.push('.rcv-r { fill: var(--r-serie-2); }');
-  feuilleReperesCache = règles.join('\n');
-  return feuilleReperesCache;
+  feuilleGraphiquesCache = règles.join('\n');
+  return feuilleGraphiquesCache;
 }
 
 /** La vue camembert d'une liste de postes : le disque + la légende complète
@@ -326,8 +360,10 @@ ${legende}
 
 /** La courbe d'évolution : SVG inline généré côté serveur, lisible sans
  *  JavaScript, la valeur de chaque point est écrite (pas de survol). Une
- *  seule échelle — jamais de double axe. */
-function courbeÉvolution(): string {
+ *  seule échelle — jamais de double axe. Version « bornes » (accueil) :
+ *  seules 2021 et 2025 sont étiquetées, en corps plus grand — la série
+ *  entière reste tracée, la version complète est sur /reperes. */
+function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes'): string {
   const ev = ÉVOLUTION;
   const gauche = 56;
   const droite = 584;
@@ -344,13 +380,15 @@ function courbeÉvolution(): string {
       .map((v, i) => {
         const x = xDe(i);
         const y = yDe(v);
+        const finale = étiquettes === 'bornes' && i !== 0 && i !== série.length - 1;
         // Le premier point est près de l'axe des ordonnées : son étiquette
         // part à droite pour ne pas chevaucher les textes de la grille.
         const ancre = i === 0 ? 'start' : 'middle';
         const étiquetteX = (i === 0 ? x + 9 : x).toFixed(1);
         const texte = (y + (étiquetteAuDessus ? -10 : 22)).toFixed(1);
-        return `<circle class="${classe}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>
-    <text class="reperes-courbe-etiquette" x="${étiquetteX}" y="${texte}" text-anchor="${ancre}">${formatteurMds.format(v)}</text>`;
+        const classeTexte = finale ? '' : ` class="reperes-courbe-etiquette${étiquettes === 'bornes' ? ' reperes-courbe-etiquette-forte' : ''}"`;
+        return `<circle class="${classe}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>${finale ? '' : `
+    <text${classeTexte} x="${étiquetteX}" y="${texte}" text-anchor="${ancre}">${formatteurMds.format(v)}</text>`}`;
       })
       .join('\n');
   const grille = [50, 52, 54, 56, 58, 60]
@@ -509,7 +547,7 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
       'Budget de l’État et finances publiques de la France : dépenses, recettes, déficit, dette, évolution. Chiffres officiels, sourcés et datés, sans commentaire.',
     contenu,
     assets,
-    cssSup: '/reperes.css',
+    cssSup: '/graphiques.css',
   });
 }
 

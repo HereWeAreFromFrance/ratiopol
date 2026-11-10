@@ -99,3 +99,15 @@ une fois) — jamais d'inline, jamais d'`unsafe-inline`, jamais de JS. La CSP
 du site reste intouchée. (Rappel pour une future passe : quelques styles
 inline historiques hors page Repères — page idée, table admin — sont
 également bloqués, décoratif.)
+
+**Complément — « La France en chiffres » sur l'accueil (même jour).** Une
+section compacte entre le héros et les idées : la courbe d'évolution
+2021-2025 en version réduite (seules les bornes 2021/2025 sont étiquetées —
+tous les points restent tracés, la version complète reste sur /reperes) et
+trois cartes chiffrées cliquables vers /reperes. Accroche d'invitation à
+contribuer, neutre par construction : elle intrigue, elle ne commente pas.
+Tous les chiffres viennent des mêmes constantes de `reperes.ts` — aucune
+valeur recopiée, donc couverte par le test de cohérence. La feuille de
+données de graphiques est renommée `/reperes.css` → **`/graphiques.css`**
+(générique : l'accueil et /reperes la partagent — le journal plus haut
+mentionne l'ancien nom, c'était celui du jour de la décision).

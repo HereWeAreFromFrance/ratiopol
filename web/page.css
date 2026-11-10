@@ -893,6 +893,12 @@ a.reperes-legend-ligne:hover .reperes-ligne-theme {
   font-variant-numeric: tabular-nums;
 }
 
+/* Étiquettes des bornes de la courbe compacte (accueil) : plus grandes,
+   pour rester lisibles quand le SVG rend petit sur mobile. */
+.reperes-courbe-etiquette-forte {
+  font-size: var(--r-txt-sm);
+}
+
 .reperes-courbe-axe {
   font-size: var(--r-txt-xs);
   fill: var(--r-encre-douce);
@@ -920,6 +926,62 @@ a.reperes-legend-ligne:hover .reperes-ligne-theme {
 
 .reperes-table-scroll {
   overflow-x: auto;
+}
+
+/* 10. ACCUEIL — LA FRANCE EN CHIFFRES ----------------------------------------
+   Une section compacte : la courbe d'évolution et trois cartes, tout
+   cliquable vers /reperes. Réutilise les graphiques et cartes de Repères. */
+
+.accueil-france-grille {
+  display: grid;
+  gap: var(--r-esp-8);
+  align-items: start;
+}
+
+/* var() n'est pas évalué dans une requête média : la valeur du jeton
+   --r-ecran-palette est donc répétée ici, à tenir à jour avec lui. */
+@media (min-width: 56rem) {
+  .accueil-france-grille {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.accueil-france-courbe {
+  min-width: 0;
+}
+
+.accueil-france-cartes {
+  display: grid;
+  gap: var(--r-esp-4);
+}
+
+a.reperes-stat-cliquable {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+a.reperes-stat-cliquable:hover {
+  border-color: var(--r-accent);
+}
+
+a.reperes-stat-cliquable:hover .reperes-stat-libelle {
+  color: var(--r-accent);
+}
+
+.accueil-france-appel {
+  margin-top: var(--r-esp-10);
+  padding-top: var(--r-esp-6);
+  border-top: var(--r-esp-1p) solid var(--r-filet);
+  display: grid;
+  gap: var(--r-esp-5);
+  justify-items: start;
+}
+
+.accueil-france-appel p {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
 }
 
 .reperes-table-details summary {

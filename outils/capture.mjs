@@ -71,6 +71,21 @@ const pages = [
   ['reperes', base + '/reperes', true],
   ['idee', base + '/idee/' + slugs[0], true],
 ];
+for (const [largeur, hauteur] of [[360, 780], [1440, 900]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/accueil-${largeur}.png`, fullPage: true });
+  console.log('capture', `accueil-${largeur}`);
+  await page.close();
+}
+const accueilSombre = await navigateur.newPage();
+await accueilSombre.setViewport({ width: 1440, height: 900 });
+await accueilSombre.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+await accueilSombre.goto(base + '/', { waitUntil: 'networkidle0' });
+await accueilSombre.screenshot({ path: 'captures/accueil-sombre-1440.png', fullPage: true });
+console.log('capture accueil-sombre-1440');
+await accueilSombre.close();
 for (const [nom, url, pleine] of pages) {
   const page = await navigateur.newPage();
   await page.setViewport({ width: 1280, height: 900 });

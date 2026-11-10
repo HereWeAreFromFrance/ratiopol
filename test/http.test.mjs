@@ -92,6 +92,15 @@ test("l'accueil répond, avec ses en-têtes de sécurité", async () => {
     assert.equal(r.entetes['x-content-type-options'], 'nosniff');
     // Le lien vers les assets passe bien par le manifeste.
     assert.match(r.corps, /main-test\.js/);
+    // « La France en chiffres » : la section, ses trois chiffres, ses
+    // deux portes de sortie et la feuille de données des graphiques.
+    assert.match(r.corps, /La France en chiffres/);
+    for (const chiffre of ['57,3', '5,1', '119,0']) {
+      assert.ok(r.corps.includes(chiffre), `chiffre manquant à l'accueil : ${chiffre}`);
+    }
+    assert.match(r.corps, /href="\/reperes"/);
+    assert.match(r.corps, /href="\/proposer"/);
+    assert.match(r.corps, /\/graphiques\.css/);
 
   } finally {
     ferme();
@@ -254,15 +263,15 @@ test('pages secondaires, recherche, thème, fichiers divers', async () => {
     assert.match(reperes.corps, /budget\.gouv\.fr/);
     assert.match(reperes.corps, /insee\.fr/);
     // La vue camembert existe ; le conic-gradient vit dans la feuille de
-    // données /reperes.css (la CSP interdit le style inline). La courbe
+    // données /graphiques.css (la CSP interdit le style inline). La courbe
     // d'évolution est un SVG inline sur la vue par défaut. Une vue inconnue
     // retombe sur les barres (pas de page cassée par un mauvais lien).
     const came = await requete(port, 'GET', '/reperes?vue=camembert');
     assert.equal(came.status, 200);
     assert.match(came.corps, /reperes-came-cercle/);
     assert.match(came.corps, /rcc-came-d/);
-    assert.match(came.corps, /\/reperes\.css/);
-    const feuille = await requete(port, 'GET', '/reperes.css');
+    assert.match(came.corps, /\/graphiques\.css/);
+    const feuille = await requete(port, 'GET', '/graphiques.css');
     assert.equal(feuille.status, 200);
     assert.match(feuille.entetes['content-type'] ?? '', /text\/css/);
     assert.match(feuille.corps, /conic-gradient/);

@@ -283,8 +283,8 @@ ${urls}
     // La feuille de données des graphiques de /reperes (la CSP interdit le
     // style inline : les valeurs calculées passent par cette feuille même
     // origine, que la page lie dans son head).
-    if (methode === 'GET' && chemin === '/reperes.css') {
-      envoieTexte(res, 200, rendu.feuilleReperes(), 'text/css; charset=utf-8');
+    if (methode === 'GET' && chemin === '/graphiques.css') {
+      envoieTexte(res, 200, rendu.feuilleGraphiques(), 'text/css; charset=utf-8');
       return;
     }
     if (methode === 'GET' && chemin === '/reperes') {
