@@ -111,3 +111,22 @@ valeur recopiée, donc couverte par le test de cohérence. La feuille de
 données de graphiques est renommée `/reperes.css` → **`/graphiques.css`**
 (générique : l'accueil et /reperes la partagent — le journal plus haut
 mentionne l'ancien nom, c'était celui du jour de la décision).
+
+## 2026-11-10 — Grands écrans : la page s'élargit par paliers
+
+Paul : « sur un écran 4K c'est mal utilisé ». Tout plafonnait à
+`--r-largeur-page: 72rem` (1152 px) — un tiers d'un 4K. Deux paliers
+redéfinissent ce jeton sur `:root` (`jetons.css`) : ≥ 120rem de viewport
+→ 90rem de conteneur, ≥ 160rem → 120rem, soit 75 % des viewports CSS
+réels d'un 4K (échelle OS 150/200 %) ou d'un 27″ 5K. `page.css` suit :
+listes de postes en trois colonnes au premier palier, camembert agrandi
+(`--r-came-max-large`) mais bloc contenu (`--r-came-bloc-max`), courbe
+plafonnée (`--r-courbe-max`). En dessous de 120rem, rien ne bouge.
+
+Choix argumentés (vérifiés par le contrôle indépendant) : pas
+d'agrandissement de la police racine — le `ch` échelonne avec elle, la
+mesure de lecture suivrait ; la taille du texte reste une affaire d'échelle
+OS et de zoom, par utilisateur. Pas de palier au-delà de 160rem : un
+viewport 3840 CSS n'existe qu'à échelle OS 100 %, où l'on zoome de toute
+façon (à 150 % on retombe au palier 2560). On élargit la mise en page,
+jamais la mesure du texte.

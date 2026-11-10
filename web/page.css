@@ -1002,3 +1002,34 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
   padding: var(--r-esp-2) var(--r-esp-4);
   border-bottom: var(--r-esp-1p) solid var(--r-filet);
 }
+
+/* 11. GRANDS ÉCRANS ----------------------------------------------------------
+   Un écran 4K n'est pas un 1152 px : au-delà du bureau classique la page
+   s'élargit par paliers (le jeton --r-largeur-page est redéfini dans
+   jetons.css) et ce qui profite de la largeur gagne une colonne ou une
+   taille dédiée. Les textes de lecture restent plafonnés à
+   --r-largeur-lecture : on élargit la mise en page, jamais la mesure. */
+
+/* var() n'est pas évalué dans une requête média : les littéraux des
+   conditions répètent --r-ecran-large / --r-ecran-tres-large, à tenir à
+   jour avec eux (le même littéral est répété dans jetons.css). */
+@media (min-width: 120rem) {
+  /* Les listes de postes passent à trois colonnes : à ce palier, deux
+     colonnes de barres de 700 px gaspillent surtout de la hauteur. */
+  .reperes-colonnes {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Le disque du camembert grandit ; son bloc garde une largeur contenue,
+     sinon la légende s'étire sur tout l'écran. */
+  .reperes-came {
+    grid-template-columns: minmax(0, var(--r-came-max-large)) 1fr;
+    max-width: var(--r-came-bloc-max);
+  }
+
+  /* La courbe plafonne : un SVG au ratio 1,88 étiré sur tout le conteneur
+     de ce palier deviendrait plus haut que le texte autour de lui. */
+  .reperes-courbe {
+    max-width: var(--r-courbe-max);
+  }
+}

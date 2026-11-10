@@ -129,6 +129,42 @@ await sombreCame.screenshot({ path: 'captures/reperes-camembert-sombre.png', ful
 console.log('capture reperes-camembert-sombre');
 await sombreCame.close();
 
+// Grands écrans : les paliers ≥ 1920 px CSS. Viewport CSS, pas pixels
+// physiques — un 4K à échelle OS 150 % tombe à 2560.
+for (const [largeur, hauteur] of [[1920, 1080], [2560, 1350], [3840, 2000]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/reperes-${largeur}.png`, fullPage: true });
+  console.log('capture', `reperes-${largeur}`);
+  await page.close();
+}
+for (const [largeur, hauteur] of [[2560, 1350], [3840, 2000]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/reperes?vue=camembert', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/reperes-camembert-${largeur}.png`, fullPage: true });
+  console.log('capture', `reperes-camembert-${largeur}`);
+  await page.close();
+}
+for (const [largeur, hauteur] of [[1920, 1080], [2560, 1350], [3840, 2000]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/accueil-${largeur}.png`, fullPage: true });
+  console.log('capture', `accueil-${largeur}`);
+  await page.close();
+}
+for (const [nom, url] of [['reperes', '/reperes'], ['accueil', '/']]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: 2560, height: 1350 });
+  await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await page.goto(base + url, { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/${nom}-sombre-2560.png`, fullPage: true });
+  console.log('capture', `${nom}-sombre-2560`);
+  await page.close();
+}
+
 await navigateur.close();
 serveur.close();
 process.exit(0);
