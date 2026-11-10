@@ -1015,7 +1015,7 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
    jour avec eux (le même littéral est répété dans jetons.css). */
 @media (min-width: 120rem) {
   /* Les listes de postes passent à trois colonnes : à ce palier, deux
-     colonnes de barres de 700 px gaspillent surtout de la hauteur. */
+     colonnes de barres en demi-conteneur gaspillent surtout de la hauteur. */
   .reperes-colonnes {
     grid-template-columns: repeat(3, 1fr);
   }

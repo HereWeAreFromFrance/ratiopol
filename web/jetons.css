@@ -84,14 +84,14 @@
      palier 2560. */
   --r-ecran-large: 120rem;       /* ≥ 1920 px — palier grand écran */
   --r-ecran-tres-large: 160rem;  /* ≥ 2560 px — palier très grand écran */
-  --r-largeur-page-large: 90rem;       /* conteneur au palier ≥ --r-ecran-large */
-  --r-largeur-page-tres-large: 120rem; /* conteneur au palier ≥ --r-ecran-tres-large */
+  --r-largeur-page-large: 100rem;      /* conteneur au palier ≥ --r-ecran-large (~83 %) */
+  --r-largeur-page-tres-large: 132rem; /* conteneur au palier ≥ --r-ecran-tres-large (~82 %) */
   --r-ecran-palette: 56rem; /* breakpoint où les palettes de repères passent en deux colonnes */
   --r-carte-min: 15rem;     /* largeur minimale d'une carte de synthèse (repères) */
   --r-came-max: 20rem;      /* largeur maximale du disque camembert (repères) */
   --r-came-max-large: 24rem; /* disque camembert au palier grand écran */
-  --r-came-bloc-max: 100rem; /* bloc disque + légende (la légende ne s'étire pas sur tout l'écran) */
-  --r-courbe-max: 80rem;    /* largeur maximale du SVG courbe (au-delà il devient plus haut que le texte autour) */
+  --r-came-bloc-max: 110rem; /* bloc disque + légende (la légende ne s'étire pas sur tout l'écran) */
+  --r-courbe-max: 88rem;    /* largeur maximale du SVG courbe (au-delà il devient plus haut que le texte autour) */
 
   /* 6. COULEURS — thème clair (par défaut). Sobre : fond papier, encre,
      UNE couleur d'accent. */
