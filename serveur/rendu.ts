@@ -123,8 +123,8 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
   <section class="heros">
     <h1>Des idées concrètes, pas des slogans.</h1>
     <p>RatioPol recueille des propositions politiques argumentées — avec leur
-    problème, leurs bénéficiaires et leur arbitrage. Gratuit, anonyme si vous
-    voulez, ouvert à tous en France.</p>
+    problème, leurs bénéficiaires et leur arbitrage. Anonyme si vous voulez,
+    ouvert à tous en France.</p>
     <div class="heros-actions">
       <a class="bouton bouton-primaire" href="/proposer">Proposer une idée</a>
       <a class="bouton bouton-secondaire" href="/themes">Parcourir par thème</a>
@@ -169,7 +169,7 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
 </div>`;
   return squelette({
     titre: 'RatioPol — des idées concrètes, pas des slogans',
-    description: 'Partagez et lisez des propositions politiques concrètes, anonymement ou non. Gratuit, ouvert à tous en France.',
+    description: 'Partagez et lisez des propositions politiques concrètes, anonymement ou non. Ouvert à tous en France.',
     contenu,
     assets,
     cssSup: '/graphiques.css',
