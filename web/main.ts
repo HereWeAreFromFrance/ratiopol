@@ -5,10 +5,14 @@
 //  · compteurs de caractères sur les champs du formulaire guidé (borne
 //    visible = gabarit compris avant l'erreur) ;
 //  · soutien sans recharger la page (le formulaire natif reste le secours) ;
-//  · les annonces de visite /_vu (visites.ts, le contrat maison).
+//  · les annonces de visite /_vu (visites.ts, le contrat maison) ;
+//  · le simulateur d'hypothèse sur /reperes (simulateur.ts) : deux
+//    poignées sur la courbe d'évolution, solde recalculé — arithmétique
+//    pure sur des données rendues en attributs par le serveur.
 // Zéro framework, zéro dépendance, un seul fichier bundlé par build.mjs.
 
 import { annoncerVisites } from './visites.ts';
+import { poseSimulateur } from './simulateur.ts';
 
 const BORNES: Record<string, [number, number]> = {
   titre: [12, 140],
@@ -70,4 +74,5 @@ function poseSoutien(): void {
 
 poseCompteurs();
 poseSoutien();
+poseSimulateur();
 annoncerVisites();

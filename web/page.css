@@ -1033,3 +1033,74 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
     max-width: var(--r-courbe-max);
   }
 }
+
+/* 12. SIMULATEUR D'HYPOTHÈSE -------------------------------------------------
+   Les poignées et la zone « votre hypothèse » posées par web/simulateur.ts
+   sur le SVG de l'évolution (/reperes). De l'arithmétique pure : aucune
+   couleur de jugement ici — les éléments réutilisent les couleurs des
+   séries officielles (rcv-*-trait / rcv-* de /graphiques.css). Sans JS, la
+   ligne de résultats rendue par le serveur suffit et rien de ceci
+   n'apparaît. Les positions sont des attributs cx/cy (géométrie), jamais
+   de style inline : la CSP l'interdit. */
+.reperes-sim-resultats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--r-esp-2) var(--r-esp-6);
+  margin-block: var(--r-esp-5) var(--r-esp-4);
+  padding: var(--r-esp-3) var(--r-esp-4);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-sm);
+  font-size: var(--r-txt-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.reperes-sim-resultats strong {
+  font-weight: var(--r-graisse-appuyee);
+}
+
+/* Le trait pointillé de l'hypothèse : la couleur vient de la classe de
+   série officielle posée à côté (rcv-d-trait / rcv-r-trait). */
+.reperes-sim-trait {
+  stroke-width: 2;
+  stroke-dasharray: 7 6;
+}
+
+/* La séparation officiel / hypothèse : un filet discret, en retrait. */
+.reperes-sim-separateur {
+  stroke: var(--r-filet-fort);
+  stroke-dasharray: 3 6;
+}
+
+.reperes-sim-poignee {
+  cursor: grab;
+  touch-action: none; /* le doigt déplace la poignée, ne fait pas défiler */
+}
+
+.reperes-sim-poignee:active {
+  cursor: grabbing;
+}
+
+/* La zone de saisie généreuse : invisible, elle élargit seulement la
+   cible du doigt ou du pointeur. */
+.reperes-sim-poignee-touche {
+  fill: transparent;
+}
+
+/* L'anneau de focus : caché par défaut, le focus-visible clavier seul le
+   montre — plus lisible sur un SVG qu'un outline rectangulaire. */
+.reperes-sim-poignee-anneau {
+  fill: none;
+  stroke: var(--r-accent);
+  stroke-width: 2;
+  opacity: 0;
+}
+
+.reperes-sim-poignee:focus-visible {
+  outline: none;
+}
+
+.reperes-sim-poignee:focus-visible .reperes-sim-poignee-anneau {
+  opacity: 1;
+}

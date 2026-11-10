@@ -135,8 +135,8 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
     <div class="accueil-france-grille">
       <div class="accueil-france-courbe">
         <div class="reperes-courbe-legend">
-          <span><span class="reperes-point rcc-d0"></span> Dépenses publiques</span>
-          <span><span class="reperes-point rcc-r0"></span> Recettes publiques</span>
+          <span><span class="reperes-point rcc-courbe-d"></span> Dépenses publiques</span>
+          <span><span class="reperes-point rcc-courbe-r"></span> Recettes publiques</span>
         </div>
         ${courbeÉvolution('bornes')}
       </div>
@@ -323,6 +323,12 @@ export function feuilleGraphiques(): string {
   règles.push('.rcv-r-trait { stroke: var(--r-serie-2); }');
   règles.push('.rcv-d { fill: var(--r-serie-1); }');
   règles.push('.rcv-r { fill: var(--r-serie-2); }');
+  // Les pastilles de la légende de la courbe : classes DÉDIÉES, alignées sur
+  // les traits ci-dessus. Ne pas réutiliser rcc-d0/rcc-r0 (classes des
+  // camemberts, où le 1er poste des recettes prend aussi la série 1) :
+  // la légende de courbe et le trait doivent se correspondre au pixel.
+  règles.push('.rcc-courbe-d { background: var(--r-serie-1); }');
+  règles.push('.rcc-courbe-r { background: var(--r-serie-2); }');
   feuilleGraphiquesCache = règles.join('\n');
   return feuilleGraphiquesCache;
 }
@@ -358,18 +364,42 @@ ${legende}
 </div>`;
 }
 
+/** Le PIB déduit des comptes publiés : dépenses en Md€ rapportées aux
+ *  dépenses en % du PIB. C'est la seule grandeur que le simulateur ajoute
+ *  aux données publiées — elle est calculée ici, rendue en attribut, et
+ *  jamais recalculée côté navigateur. */
+function pibMdsDéduit(): number {
+  return (FINANCES_PUBLIQUES.dépensesMds / FINANCES_PUBLIQUES.dépensesPib) * 100;
+}
+
+/** L'écart de solde en points, signé, à un dixième de point — la même
+ *  écriture que côté navigateur (web/simulateur.ts) pour que la ligne
+ *  rendue par le serveur (statu quo) et la ligne recalculée coïncident
+ *  caractère pour caractère. Un signe, jamais un adjectif. */
+function ecartTexte(ecart: number): string {
+  const signe = ecart > 0 ? '+' : '';
+  // En français, « point » reste au singulier sous 2 (0,0 point, 1,5 point).
+  const singulier = Math.abs(Math.round(ecart * 10)) < 20;
+  return `${signe}${formatteurMds.format(ecart)}&nbsp;${singulier ? 'point' : 'points'}`;
+}
+
 /** La courbe d'évolution : SVG inline généré côté serveur, lisible sans
  *  JavaScript, la valeur de chaque point est écrite (pas de survol). Une
  *  seule échelle — jamais de double axe. Version « bornes » (accueil) :
  *  seules 2021 et 2025 sont étiquetées, en corps plus grand — la série
- *  entière reste tracée, la version complète est sur /reperes. */
-function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes'): string {
+ *  entière reste tracée, la version complète est sur /reperes.
+ *  Avec sim=true, le graphe publie en attributs data-* tout ce que le
+ *  simulateur du navigateur (web/simulateur.ts) doit savoir : le JS ne
+ *  recopie aucune valeur, il ne fait que de l'arithmétique sur celles-ci. */
+function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes', sim = false): string {
   const ev = ÉVOLUTION;
   const gauche = 56;
   const droite = 584;
   const haut = 24;
   const bas = 304;
-  const yDe = (v: number) => bas - (v - 50) * ((bas - haut) / 10);
+  const echelleBasse = 50;
+  const echelleHaute = 60;
+  const yDe = (v: number) => bas - (v - echelleBasse) * ((bas - haut) / (echelleHaute - echelleBasse));
   const xDe = (i: number) => gauche + (i * (droite - gauche)) / (ev.années.length - 1);
   const ligne = (série: number[], classe: string) =>
     `<polyline class="${classe}" fill="none" stroke-width="2" points="${série
@@ -401,7 +431,16 @@ function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes'): string {
   const années = ev.années
     .map((a, i) => `<text class="reperes-courbe-axe" x="${xDe(i).toFixed(1)}" y="328" text-anchor="middle">${a}</text>`)
     .join('\n');
-  return `<svg class="reperes-courbe" viewBox="0 0 640 340" role="img"
+  const donnees = sim
+    ? ` data-sim="1"
+     data-min="${echelleBasse}" data-max="${echelleHaute}"
+     data-x-dernier="${droite}" data-x-pas="${(droite - gauche) / (ev.années.length - 1)}"
+     data-y-haut="${haut}" data-y-bas="${bas}"
+     data-annees="${ev.années.join(',')}"
+     data-dep="${ev.dépensesPib.join(',')}" data-rec="${ev.recettesPib.join(',')}"
+     data-pib-mds="${pibMdsDéduit().toFixed(1)}"`
+    : '';
+  return `<svg class="reperes-courbe" viewBox="0 0 640 340" role="img"${donnees}
      aria-label="Dépenses et recettes publiques en % du PIB, de ${ev.années[0]} à ${ev.années[ev.années.length - 1]} : dépenses ${ev.dépensesPib
        .map((v) => formatteurMds.format(v))
        .join(', ')} ; recettes ${ev.recettesPib.map((v) => formatteurMds.format(v)).join(', ')}">
@@ -412,6 +451,35 @@ function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes'): string {
   ${points(ev.recettesPib, 'rcv-r', false)}
   ${années}
 </svg>`;
+}
+
+/** Le bloc « votre hypothèse » : de l'arithmétique pure sur la courbe,
+ *  rien d'autre. Rendu statique = statu quo (les valeurs de la dernière
+ *  année publiée) ; le JS du navigateur met ces mêmes spans à jour quand
+ *  on déplace les poignées (web/simulateur.ts). Aucun adjectif, aucune
+ *  couleur de jugement : des nombres et un signe. Sans JavaScript, cette
+ *  ligne rendue par le serveur est déjà le résultat complet. */
+function simBlocÉvolution(): string {
+  const ev = ÉVOLUTION;
+  const dernier = ev.années.length - 1;
+  const année = ev.années[dernier];
+  const dep = ev.dépensesPib[dernier];
+  const rec = ev.recettesPib[dernier];
+  const solde = rec - dep;
+  // Au statu quo, l'écart avec l'année publiée est nul par construction —
+  // la formule reste exactement celle que le navigateur appliquera ensuite.
+  const ecart = solde - solde;
+  return `
+    <h3 class="reperes-sous-titre">Votre hypothèse pour ${année + 1}</h3>
+    <div class="reperes-sim-resultats">
+      <span>Dépenses&nbsp;: <strong data-sim-dep>${formatteurMds.format(dep)}&nbsp;%</strong></span>
+      <span>Recettes&nbsp;: <strong data-sim-rec>${formatteurMds.format(rec)}&nbsp;%</strong></span>
+      <span>Solde simulé&nbsp;: <strong data-sim-solde-pib>${formatteurMds.format(solde)}&nbsp;% du PIB</strong></span>
+      <span>soit <strong data-sim-solde-mds>${formatteurMds.format((solde / 100) * pibMdsDéduit())}&nbsp;Md€</strong></span>
+      <span>Écart avec ${année}&nbsp;: <strong data-sim-ecart>${ecartTexte(ecart)}</strong></span>
+    </div>
+    <p class="reperes-note">Simulation arithmétique sur vos hypothèses — pas une prévision, pas
+    les chiffres officiels. PIB ${année} déduit des comptes publiés.</p>`;
 }
 
 /** Le sélecteur de vue : deux liens sobres, l'état courant porté par
@@ -505,10 +573,11 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     limite pas à la courbe&nbsp;: chaque valeur est écrite sur le tracé et la table repliable
     donne les montants.</p>
     <div class="reperes-courbe-legend">
-      <span><span class="reperes-point rcc-d0"></span> Dépenses publiques</span>
-      <span><span class="reperes-point rcc-r0"></span> Recettes publiques</span>
+      <span><span class="reperes-point rcc-courbe-d"></span> Dépenses publiques</span>
+      <span><span class="reperes-point rcc-courbe-r"></span> Recettes publiques</span>
     </div>
-    ${courbeÉvolution()}
+    ${courbeÉvolution('toutes', true)}
+    ${simBlocÉvolution()}
     <details class="reperes-table-details">
       <summary>La série complète en table</summary>
       <div class="reperes-table-scroll">

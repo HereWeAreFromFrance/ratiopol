@@ -165,6 +165,107 @@ for (const [nom, url] of [['reperes', '/reperes'], ['accueil', '/']]) {
   await page.close();
 }
 
+// Le simulateur d'hypothèse (/reperes) : d'abord sans JavaScript — non-
+// régression stricte, la page doit rester exactement celle du serveur —
+// puis avec, poignées déplacées au clavier et au pointeur, résultats relus
+// dans le DOM pour vérifier le recalcul arithmétique.
+// Chaque scénario capture le graphe seul (vérification du dessin) et la
+// page entière (vérification de l'intégration à la mise en page).
+const captureSim = async (page, nom) => {
+  const graphe = await page.$('svg[data-sim]');
+  await graphe.screenshot({ path: `captures/${nom}-graphe.png` });
+  await page.screenshot({ path: `captures/${nom}.png`, fullPage: true });
+  console.log('capture', nom);
+};
+
+for (const [largeur, hauteur] of [[1440, 900], [360, 780]]) {
+  const page = await navigateur.newPage();
+  await page.setJavaScriptEnabled(false);
+  await page.setViewport({ width: largeur, height: hauteur });
+  await page.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/reperes-sim-sans-js-${largeur}.png`, fullPage: true });
+  const graphe = await page.$('svg.reperes-courbe');
+  await graphe.screenshot({ path: `captures/reperes-sim-sans-js-${largeur}-graphe.png` });
+  console.log('capture', `reperes-sim-sans-js-${largeur}`);
+  await page.close();
+}
+
+const litResultats = (page) =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      ['dep', 'rec', 'solde-pib', 'solde-mds', 'ecart'].map((nom) => [
+        nom,
+        document.querySelector(`[data-sim-${nom}]`)?.textContent ?? 'absent',
+      ]),
+    ),
+  );
+
+const simPage = async (largeur, hauteur, sombre = false) => {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  if (sombre) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await page.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+  return page;
+};
+
+// Défaut : poignées au statu quo (valeurs 2025) — solde attendu −5,1 %,
+// −152,6 Md€, écart 0,0 point.
+let page = await simPage(1440, 900);
+console.log('statu quo :', JSON.stringify(await litResultats(page)));
+await captureSim(page, 'reperes-sim-defaut-1440');
+
+// Au clavier (0,1 point par cran) : dépenses 57,3 → 55,3, recettes
+// 52,2 → 53,7 — solde attendu −1,6 %, −47,9 Md€, écart +3,5 points.
+const poignees = await page.$$('g[role="slider"]');
+if (poignees.length !== 2) throw new Error(`poignées attendues : 2, trouvées : ${poignees.length}`);
+// focus() de puppeteer ne prend que les HTMLElement : pour le <g> SVG, on
+// passe par le DOM.
+const cibleClavier = async (poignee) => poignee.evaluate((g) => g.focus());
+await cibleClavier(poignees[0]);
+for (let i = 0; i < 20; i++) await page.keyboard.press('ArrowDown');
+await cibleClavier(poignees[1]);
+for (let i = 0; i < 15; i++) await page.keyboard.press('ArrowUp');
+console.log('au clavier :', JSON.stringify(await litResultats(page)));
+await captureSim(page, 'reperes-sim-hausse-1440');
+await page.close();
+
+// Sombre, au clavier dans l'autre sens : 42 et 25 crans dépassent les
+// bornes 50-60 — dépenses 57,3 → 60,0, recettes 52,2 → 50,0. Le scénario
+// démontre le blocage aux bornes : solde attendu −10,0 %, −299,1 Md€,
+// écart −4,9 points.
+const pageSombre = await simPage(1440, 900, true);
+const poigneesSombre = await pageSombre.$$('g[role="slider"]');
+await poigneesSombre[0].evaluate((g) => g.focus());
+for (let i = 0; i < 42; i++) await pageSombre.keyboard.press('ArrowUp');
+await poigneesSombre[1].evaluate((g) => g.focus());
+for (let i = 0; i < 25; i++) await pageSombre.keyboard.press('ArrowDown');
+console.log('sombre :', JSON.stringify(await litResultats(pageSombre)));
+await captureSim(pageSombre, 'reperes-sim-baisse-sombre-1440');
+await pageSombre.close();
+
+// Mobile, au pointeur : on glisse la poignée des recettes de 52,2 à 51,2
+// (cy attendu 270,4 dans le viewBox) — solde attendu −6,1 %, −182,5 Md€,
+// écart −1,0 point (le singulier).
+const pageMobile = await simPage(360, 780);
+const slidersMobile = await pageMobile.$$('g[role="slider"]');
+const svgSim = await pageMobile.$('svg[data-sim]');
+await slidersMobile[1].scrollIntoView();
+const boiteSvg = await svgSim.boundingBox();
+const boiteRec = await slidersMobile[1].boundingBox();
+const cx = boiteRec.x + boiteRec.width / 2;
+const cy = boiteRec.y + boiteRec.height / 2;
+const cible = boiteSvg.y + (270.4 / 340) * boiteSvg.height;
+await pageMobile.mouse.move(cx, cy);
+await pageMobile.mouse.down();
+await pageMobile.mouse.move(cx, cible, { steps: 8 });
+await pageMobile.mouse.up();
+console.log('au pointeur :', JSON.stringify(await litResultats(pageMobile)));
+console.log('aria recettes :', await slidersMobile[1].evaluate((g) => `${g.getAttribute('aria-valuenow')} / ${g.getAttribute('aria-valuetext')}`));
+await svgSim.screenshot({ path: 'captures/reperes-sim-glisser-360-graphe.png' });
+await pageMobile.screenshot({ path: 'captures/reperes-sim-glisser-360.png', fullPage: true });
+console.log('capture reperes-sim-glisser-360');
+await pageMobile.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);

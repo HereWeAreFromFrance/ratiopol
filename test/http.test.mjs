@@ -276,6 +276,13 @@ test('pages secondaires, recherche, thème, fichiers divers', async () => {
     assert.match(feuille.entetes['content-type'] ?? '', /text\/css/);
     assert.match(feuille.corps, /conic-gradient/);
     assert.match(feuille.corps, /\.rcw-d0 \{ width: 100%/);
+    // Les pastilles de la légende de la courbe ont leurs classes DÉDIÉES,
+    // alignées sur les traits : dépenses = série 1, recettes = série 2.
+    // (Le bug historique : rcc-r0, classe du camembert des recettes, valait
+    // série 1 — la légende montrait bleu pour un trait orange.)
+    assert.match(feuille.corps, /\.rcc-courbe-d \{ background: var\(--r-serie-1\)/);
+    assert.match(feuille.corps, /\.rcc-courbe-r \{ background: var\(--r-serie-2\)/);
+    assert.ok(!reperes.corps.includes('rcc-r0'), 'la légende de courbe ne réutilise plus les classes camembert');
     assert.match(reperes.corps, /<svg/);
     assert.match(reperes.corps, /polyline/);
     assert.match(reperes.corps, /rcw-d0/);
@@ -414,4 +421,69 @@ test('les repères budgétaires restent cohérents', () => {
   assert.ok(Math.abs(sommeParts([...be.depenses, be.autresDepenses], be.totalDepensesMds) - 100) <= 1);
   assert.ok(Math.abs(sommeParts(be.recettesFiscales, be.totalFiscalesMds) - 100) <= 1);
   assert.ok(Math.abs(sommeParts(fp.sousSecteurs, null) - 100) <= 1);
+});
+
+test('le simulateur publie ses données en attributs, rien en JavaScript', async () => {
+  const { port, ferme } = await demarre();
+  // ferme() en finally : une assertion qui saute ne doit pas laisser un
+  // serveur ouvert qui ferait pendre toute la suite de tests.
+  try {
+    const reperes = await requete(port, 'GET', '/reperes');
+    assert.equal(reperes.status, 200);
+    // Le graphe porte TOUT ce que le simulateur doit savoir : le JS du
+    // navigateur n'en recopie aucune valeur, il ne fait qu'arithmétique.
+    assert.match(reperes.corps, /data-sim="1"/);
+    assert.match(reperes.corps, /data-min="50" data-max="60"/);
+    assert.match(reperes.corps, /data-x-dernier="584" data-x-pas="132"/);
+    assert.match(reperes.corps, /data-y-haut="24" data-y-bas="304"/);
+    assert.match(reperes.corps, new RegExp(`data-annees="${ÉVOLUTION.années.join(',')}"`));
+    assert.match(reperes.corps, new RegExp(`data-dep="${ÉVOLUTION.dépensesPib.join(',')}"`));
+    assert.match(reperes.corps, new RegExp(`data-rec="${ÉVOLUTION.recettesPib.join(',')}"`));
+    // Le PIB rendu est bien celui déduit des comptes publiés — même
+    // expression que serveur/rendu.ts (pibMdsDéduit), donc même flottant.
+    const pib = (FINANCES_PUBLIQUES.dépensesMds / FINANCES_PUBLIQUES.dépensesPib) * 100;
+    assert.match(reperes.corps, new RegExp(`data-pib-mds="${pib.toFixed(1)}"`));
+    // Sans JavaScript, pas de slider : le rôle n'est posé que par le JS
+    // (web/simulateur.ts), jamais rendu par le serveur.
+    assert.ok(!reperes.corps.includes('role="slider"'));
+    // L'accueil trace la courbe, mais sans hypothèse : pas d'attributs sim.
+    const accueil = await requete(port, 'GET', '/');
+    assert.equal(accueil.status, 200);
+    assert.ok(accueil.corps.includes('<svg'), 'l’accueil trace bien la courbe');
+    assert.ok(!accueil.corps.includes('data-sim'), 'l’accueil ne publie pas le simulateur');
+  } finally {
+    ferme();
+  }
+});
+
+test('le simulateur affiche le statu quo par défaut, avec sa note de méthode', async () => {
+  const { port, ferme } = await demarre();
+  try {
+    const reperes = await requete(port, 'GET', '/reperes');
+    assert.equal(reperes.status, 200);
+    const dernier = ÉVOLUTION.années.length - 1;
+    const année = ÉVOLUTION.années[dernier];
+    const dep = ÉVOLUTION.dépensesPib[dernier];
+    const rec = ÉVOLUTION.recettesPib[dernier];
+    const solde = rec - dep;
+    const pib = (FINANCES_PUBLIQUES.dépensesMds / FINANCES_PUBLIQUES.dépensesPib) * 100;
+    // Même formatteur que le serveur : une décimale, virgule française.
+    const f = (v) => v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    assert.match(reperes.corps, new RegExp(`Votre hypothèse pour ${année + 1}`));
+    assert.match(reperes.corps, new RegExp(`data-sim-dep>${f(dep)}&nbsp;%`));
+    assert.match(reperes.corps, new RegExp(`data-sim-rec>${f(rec)}&nbsp;%`));
+    // Le solde est rendu signé (le signe moins typographique vient du CLDR,
+    // d'où la classe de caractères) — et l'écart statu quo est nul.
+    assert.match(reperes.corps, new RegExp(`data-sim-solde-pib>[−-]${f(Math.abs(solde))}&nbsp;% du PIB`));
+    assert.match(reperes.corps, new RegExp(`data-sim-solde-mds>[−-]${f(Math.abs((solde / 100) * pib))}&nbsp;Md€`));
+    assert.match(reperes.corps, /data-sim-ecart>0,0&nbsp;point</);
+    // La note de méthode, mot pour mot : pas une prévision, pas les
+    // chiffres officiels.
+    assert.match(
+      reperes.corps,
+      new RegExp(`Simulation arithmétique sur vos hypothèses — pas une prévision, pas\\s+les chiffres officiels\\. PIB ${année} déduit des comptes publiés\\.`),
+    );
+  } finally {
+    ferme();
+  }
 });

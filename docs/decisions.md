@@ -130,3 +130,27 @@ OS et de zoom, par utilisateur. Pas de palier au-delà de 160rem : un
 viewport 3840 CSS n'existe qu'à échelle OS 100 %, où l'on zoome de toute
 façon (à 150 % on retombe au palier 2560). On élargit la mise en page,
 jamais la mesure du texte.
+
+## 2026-11-10 — Courbes : couleurs honnêtes et simulateur « votre hypothèse 2026 »
+
+Paul : « vérifie que mes couleurs correspondent bien aux courbes ; on doit
+pouvoir faire bouger les courbes soi-même et voir les effets produits. »
+
+**Le contrôle a trouvé un vrai décalage** : la pastille « Recettes publiques »
+de la légende de courbe était bleue — elle réutilisait `rcc-r0`, classe du
+camembert des recettes où le 1er poste prend la série 1 — alors que son trait
+est orange (série 2). Les pastilles de courbe ont désormais des classes
+dédicées (`rcc-courbe-d/r`) alignées sur les traits ; les classes camembert
+restent intactes ; un test verrouille la correspondance.
+
+**Le simulateur**, sur /reperes : les séries officielles 2021-2025 restent
+figées (l'histoire ne se déplace pas) ; deux poignées clavier/souris/tactile
+posent l'hypothèse 2026 (dépenses et recettes, % du PIB, bornes 50-60) et une
+bande de résultats recalcule le solde simulé (% PIB et Md€) et l'écart avec
+2025 en points. Règles d'objectivité de la simulation : arithmétique pure —
+aucun adjectif, aucune couleur sémantique, pas de « améliore/dégrade » ; la
+note dit que ce n'est ni une prévision ni les chiffres officiels ; le PIB
+2025 déduit des comptes publiés est la seule grandeur calculée, il vient des
+constantes de `reperes.ts` en data-attribute (zéro valeur recopiée en JS).
+Sans JavaScript : graphe et bande de résultats au statu quo 2025, rendus par
+le serveur, identiques au codepoint près à la réécriture du JS.
