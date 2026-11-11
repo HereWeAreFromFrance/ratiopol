@@ -111,6 +111,17 @@ for (const [nom, url, pleine] of pages) {
   await page.close();
 }
 
+// Fiches de thème et page « Comment agir ».
+for (const [nom, chemin, largeur, sombreF] of [['theme-logement-1440', '/theme/logement', 1440, false], ['theme-energie-360', '/theme/energie', 360, false], ['theme-justice-sombre', '/theme/justice', 1440, true], ['agir-1280', '/agir', 1280, false]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: 900 });
+  if (sombreF) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await page.goto(base + chemin, { waitUntil: 'networkidle0' });
+  await page.screenshot({ path: `captures/${nom}.png`, fullPage: true });
+  console.log('capture', nom);
+  await page.close();
+}
+
 // La page Thèmes : familles de cartes, desktop, mobile et sombre.
 for (const [largeur, hauteur, sombreT] of [[1440, 900, false], [360, 780, false], [1440, 900, true]]) {
   const page = await navigateur.newPage();

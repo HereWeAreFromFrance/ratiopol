@@ -47,6 +47,7 @@ export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
 export { echappe, empreinteAvis, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
 export { BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES } from './reperes';
 export { FAMILLES, THEMES } from './themes';
+export { FICHES } from './fiches';
 export type { Assets } from './rendu';
 
 export interface OptionsServeur {
@@ -188,6 +189,8 @@ export function creeServeur(opts: OptionsServeur): Server {
   <url><loc>${origine}/proposer</loc></url>
   <url><loc>${origine}/themes</loc></url>
   <url><loc>${origine}/reperes</loc></url>
+  <url><loc>${origine}/agir</loc></url>
+${THEMES.map((t) => `  <url><loc>${origine}/theme/${t.id}</loc></url>`).join('\n')}
 ${urls}
 </urlset>`;
   }
@@ -268,7 +271,13 @@ ${urls}
       return;
     }
     if (methode === 'GET' && chemin === '/proposer') {
-      envoieTexte(res, 200, rendu.pageProposer(assets));
+      // ?theme=… présélectionne le thème (lien « proposer sur ce thème »).
+      const theme = url.searchParams.get('theme') ?? '';
+      envoieTexte(res, 200, rendu.pageProposer(assets, THEMES.some((t) => t.id === theme) ? { theme } : undefined));
+      return;
+    }
+    if (methode === 'GET' && chemin === '/agir') {
+      envoieTexte(res, 200, rendu.pageAgir(assets));
       return;
     }
     if (methode === 'GET' && chemin.startsWith('/idee/')) {

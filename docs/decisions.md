@@ -247,3 +247,47 @@ des sujets, jamais une position (« nucléaire, renouvelables », pas
 anciens existent toujours (un test le vérifie) ; `impots` s'affiche
 désormais « Budget & impôts », `territoires` perd l'agriculture, qui a
 son propre thème. Aucune idée n'était publiée : rien à migrer.
+
+## 2026-11-11 — Fiches « pour agir » : les faits de chaque thème
+
+Paul : « dans chaque thème, ramener un maximum d'informations objectives
+pour savoir comment agir ». Chaque thème a désormais une fiche
+(`serveur/fiches.json`, typée par `serveur/fiches.ts`) :
+- **Les chiffres clés** (240 au total, 5 à 11 par thème) : ampleur,
+  évolution, argent public, comparaison européenne quand elle est
+  officielle ;
+- **Qui décide** : UE, État, Parlement, région, département,
+  intercommunalité, commune, Sécurité sociale, partenaires sociaux — savoir
+  à qui s'adresser est la première condition pour agir ;
+- **Pour aller plus loin** : rapports et portails officiels ;
+- un bloc commun **« Comment agir »** (page `/agir`) : pétitions Assemblée,
+  Sénat et CESE avec leurs seuils, RIP, droit de pétition local, députés et
+  sénateurs, consultations et enquêtes publiques.
+
+**Mêmes règles que les Repères**, et un garde-fou de plus : chaque chiffre
+garde l'**extrait** de la page d'où il vient (non affiché) — la preuve
+qu'on relit à la mise à jour. Le test « fiches » exige une URL https d'un
+**domaine officiel** (liste fermée dans le test : un nouveau domaine se
+justifie par écrit), tous les champs remplis, et refuse une liste de mots
+de jugement (« record », « seulement », « alarmant »…) dans les libellés.
+
+**Comment c'est fait** : recherche par cinq agents en parallèle, consigne
+« uniquement des pages officielles réellement ouvertes, chiffres recopiés à
+l'identique, aucun calcul, aucun chiffre de mémoire », puis relecture.
+Retirés à la relecture : les comparaisons européennes sans la valeur
+française ; une compétence dont la source ne disait pas ce qui était
+écrit ; l'emploi des jeunes en informatique sur la fiche IA (il suggérait un
+effet de l'IA que la source ne mesure pas) ; le déficit, la dette et la
+dépense de la fiche Budget (comptes Insee de mai, 152,5 Md€, alors que les
+Repères affichent l'estimation de mars, 151,6 Md€ — deux millésimes
+officiels, on n'en affiche pas deux sur le site). Les montants 2026 issus
+du projet de loi de finances le disent dans leur précision, comme la hausse
+du tarif d'électricité, qui est une proposition de la CRE. Liens vérifiés
+un par un : deux morts retirés ; douze refusent les robots (Légifrance,
+Intérieur, Éducation) mais s'ouvrent dans un navigateur.
+
+**À reprendre** : les Repères (151,6 Md€) gagneraient à passer aux comptes
+de mai (152,5 Md€) ; plusieurs chiffres seront à rafraîchir à leur
+prochaine édition (inflation définitive le 13/11/2026, enquête Sans
+domicile fin 2026, participation aux municipales 2026, données Intérieur
+bloquées aux robots).

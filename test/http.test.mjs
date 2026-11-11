@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES, FAMILLES, THEMES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -497,6 +497,71 @@ test('les thèmes : exhaustifs, rangés en familles, tous joignables', async () 
     assert.match(formulaire, /<optgroup label="Numérique"><option value="numerique">/);
     const depot = await requete(port, 'POST', '/proposer', corpsValide({ theme: 'ia' }), { 'Content-Type': 'application/x-www-form-urlencoded' });
     assert.equal(depot.status, 303);
+  } finally {
+    ferme();
+  }
+});
+
+/** Les domaines des sources admises : statistique publique, administrations,
+ *  institutions, autorités et organismes publics. Un nouveau domaine se
+ *  justifie ici, par écrit — c'est la règle « source officielle ». */
+const DOMAINES_OFFICIELS = [
+  '.gouv.fr', 'insee.fr', 'europa.eu', 'senat.fr', 'assemblee-nationale.fr', 'ccomptes.fr', 'vie-publique.fr',
+  'banque-france.fr', 'cnil.fr', 'arcep.fr', 'arcom.fr', 'cre.fr', 'citepa.org', 'rte-france.com', 'injep.fr',
+  'caf.fr', 'cor-retraites.fr', 'conseil-constitutionnel.fr', 'defenseurdesdroits.fr', 'santepubliquefrance.fr',
+  'elysee.fr', 'lecese.fr', 'securite-sociale.fr',
+];
+const officiel = (url) => {
+  const hote = new URL(url).hostname;
+  return url.startsWith('https://')
+    && DOMAINES_OFFICIELS.some((d) => (d.startsWith('.') ? hote.endsWith(d) : hote === d || hote.endsWith('.' + d)));
+};
+
+test('les fiches « pour agir » : complètes, sourcées, officielles, sans jugement', async () => {
+  // Chaque thème (sauf « Autre ») a sa fiche, plus les voies d'action.
+  for (const t of THEMES.filter((x) => x.id !== 'autre')) {
+    const f = FICHES.find((x) => x.theme === t.id);
+    assert.ok(f, `fiche manquante : ${t.id}`);
+    assert.ok(f.chiffres.length >= 5, `trop peu de chiffres : ${t.id}`);
+    assert.ok(f.competences.length >= 2, `« qui décide » trop court : ${t.id}`);
+  }
+  assert.ok(FICHES.find((f) => f.theme === 'comment-agir').competences.length >= 5);
+  // Aucun thème inconnu, aucune fiche en double.
+  const ids = FICHES.map((f) => f.theme);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ids) assert.ok(id === 'comment-agir' || THEMES.some((t) => t.id === id), `fiche orpheline : ${id}`);
+
+  // Un chiffre = un libellé, une valeur, un périmètre, une source, une URL
+  // officielle, et l'extrait qui le prouve.
+  const MOTS_DE_JUGEMENT = /\b(record|seulement|inquiétant|alarmant|explos|massi(f|ve)|catastroph|scandal|dramatique|à peine)/i;
+  for (const f of FICHES) {
+    assert.match(f.verifieeLe, /^\d{4}-\d{2}-\d{2}$/);
+    for (const c of f.chiffres) {
+      for (const champ of ['libelle', 'valeur', 'precision', 'source', 'url', 'extrait']) {
+        assert.ok(typeof c[champ] === 'string' && c[champ].trim().length > 0, `${f.theme} : « ${c.libelle} » sans ${champ}`);
+      }
+      assert.ok(officiel(c.url), `${f.theme} : source non officielle ${c.url}`);
+      for (const champ of ['libelle', 'valeur', 'precision']) {
+        assert.doesNotMatch(c[champ], MOTS_DE_JUGEMENT, `${f.theme} : jugement dans « ${c[champ]} »`);
+      }
+    }
+    for (const x of [...f.competences, ...f.ressources]) assert.ok(officiel(x.url), `${f.theme} : lien non officiel ${x.url}`);
+  }
+
+  // Les pages : un thème montre ses chiffres et qui décide ; /agir répond.
+  const { port, ferme } = await demarre();
+  try {
+    const logement = (await requete(port, 'GET', '/theme/logement')).corps;
+    assert.match(logement, /Les chiffres clés/);
+    assert.match(logement, /Qui décide/);
+    assert.match(logement, /5,4 millions/);
+    assert.match(logement, /href="\/proposer\?theme=logement"/);
+    assert.doesNotMatch(logement, /extrait/i, 'l’extrait d’audit ne s’affiche pas');
+    const agir = await requete(port, 'GET', '/agir');
+    assert.equal(agir.status, 200);
+    assert.match(agir.corps, /Pétition au Sénat/);
+    // Le lien « proposer sur ce thème » présélectionne le thème.
+    assert.match((await requete(port, 'GET', '/proposer?theme=energie')).corps, /<option value="energie" selected>/);
   } finally {
     ferme();
   }

@@ -452,6 +452,150 @@ main {
   color: var(--r-encre-legere);
 }
 
+/* Fiche « pour agir » d'un thème : chiffres clés en cartes (la valeur en
+   grand, toujours suivie de ce qu'elle mesure et de sa source), qui
+   décide, voies d'action. */
+.fiche-fil {
+  font-size: var(--r-txt-sm);
+  margin-bottom: var(--r-esp-2);
+}
+
+.fiche-chiffres {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--r-carte-min), 1fr));
+  gap: var(--r-esp-4);
+}
+
+.fiche-chiffre {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--r-esp-2);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-4) var(--r-esp-5);
+  box-shadow: var(--r-ombre-carte);
+}
+
+.fiche-valeur {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-xl);
+  line-height: var(--r-txt-xl-h);
+  font-weight: var(--r-graisse-forte);
+  font-variant-numeric: tabular-nums;
+  color: var(--r-encre);
+}
+
+/* Une valeur longue (« 5,5 % en 2019 ; 6,4 % en 2025 ») descend d'un cran :
+   en grand, elle écraserait la carte. */
+.fiche-valeur-longue {
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+}
+
+.fiche-libelle {
+  font-size: var(--r-txt-sm);
+  line-height: var(--r-txt-sm-h);
+  font-weight: var(--r-graisse-moyenne);
+}
+
+.fiche-precision,
+.fiche-source {
+  font-size: var(--r-txt-xs);
+  line-height: var(--r-txt-xs-h);
+  color: var(--r-encre-legere);
+}
+
+.fiche-chiffre figcaption {
+  display: grid;
+  gap: var(--r-esp-1);
+}
+
+.fiche-chiffre .fiche-source {
+  margin-top: auto;
+}
+
+.fiche-domaine {
+  color: var(--r-encre-legere);
+}
+
+.fiche-domaine::before {
+  content: '(';
+}
+
+.fiche-domaine::after {
+  content: ')';
+}
+
+.fiche-competences {
+  display: grid;
+  gap: var(--r-esp-4);
+  max-width: var(--r-largeur-lecture);
+}
+
+.fiche-competences dt {
+  font-weight: var(--r-graisse-appuyee);
+  margin-bottom: var(--r-esp-1);
+}
+
+.fiche-competences dd {
+  margin: 0;
+  font-size: var(--r-txt-sm);
+  line-height: var(--r-txt-sm-h);
+  color: var(--r-encre-douce);
+}
+
+.fiche-competences div:target {
+  background: var(--r-accent-doux);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-3);
+}
+
+.fiche-agir {
+  background: var(--r-accent-doux);
+  border-radius: var(--r-rayon-md);
+  padding: var(--r-esp-6);
+}
+
+.fiche-agir h2 {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-xl);
+  line-height: var(--r-txt-xl-h);
+  margin-bottom: var(--r-esp-2);
+}
+
+.fiche-agir-voies-titre {
+  margin-top: var(--r-esp-5);
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+}
+
+.fiche-agir-voies {
+  list-style: none;
+  margin: var(--r-esp-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r-esp-2);
+}
+
+.fiche-agir-voies a {
+  display: inline-block;
+  font-size: var(--r-txt-sm);
+  color: var(--r-accent);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-plein);
+  padding: var(--r-esp-1) var(--r-esp-3);
+  text-decoration: none;
+}
+
+.fiche-agir-voies a:hover,
+.fiche-agir-voies a:focus-visible {
+  border-color: var(--r-accent);
+}
+
 /* 6. PAGE IDÉE --------------------------------------------------------------- */
 
 .idee-tete {

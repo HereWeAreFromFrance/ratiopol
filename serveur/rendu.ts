@@ -9,7 +9,8 @@
 import type { Avis, Decompte, Idee, Signalement } from './depot';
 import { MOTIFS_SIGNALEMENT } from './depot';
 import type { Erreurs, ValeursBrutes } from './gabarit';
-import { BORNES, EFFETS, UNITES } from './gabarit';
+import { BORNES, EFFETS, UNITES, slugDepuisTitre } from './gabarit';
+import { COMMENT_AGIR, ficheDe, type Competence, type Fiche } from './fiches';
 import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
 import { BUDGET_ETAT, FINANCES_PUBLIQUES, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
 import { echappe } from './securite';
@@ -90,6 +91,7 @@ ${cssSup ? `<link rel="stylesheet" href="${e(cssSup)}">` : ''}
       <a href="/proposer">Proposer une idée</a>
       <a href="/themes">Thèmes</a>
       <a href="/reperes">Repères</a>
+      <a href="/agir">Agir</a>
       <a href="/apropos">À propos</a>
     </nav>
   </div>
@@ -252,24 +254,124 @@ function chiffresDuTheme(idTheme: string): string {
   return `<p class="theme-chiffres"><a href="/reperes">Chiffres officiels</a> — ${lignes.join(' · ')}</p>`;
 }
 
+/** Le domaine d'une URL, pour dire où mène un lien de source. */
+function domaine(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function lienSource(nom: string, url: string): string {
+  return `<a href="${e(url)}" rel="noopener">${e(nom)}</a> <span class="fiche-domaine">${e(domaine(url))}</span>`;
+}
+
+/** Les chiffres clés d'un thème : la valeur en grand, puis ce qu'elle
+ *  mesure, son périmètre et sa source — jamais l'une sans les autres. */
+function sectionChiffresCles(fiche: Fiche, idTheme: string): string {
+  const cartes = fiche.chiffres.map((c) => `<figure class="fiche-chiffre">
+      <p class="fiche-valeur${c.valeur.length > 18 ? ' fiche-valeur-longue' : ''}">${e(c.valeur)}</p>
+      <figcaption>
+        <p class="fiche-libelle">${e(c.libelle)}</p>
+        <p class="fiche-precision">${e(c.precision)}</p>
+        <p class="fiche-source">${lienSource(c.source, c.url)}</p>
+      </figcaption>
+    </figure>`).join('\n');
+  return `<section class="section" aria-labelledby="chiffres-titre">
+    ${sectionTitre('Les chiffres clés')}
+    <div class="fiche-chiffres">${cartes}</div>
+    ${chiffresDuTheme(idTheme)}
+    <p class="reperes-note" id="chiffres-titre-note">Chiffres officiels recopiés tels que publiés, sans commentaire.
+    Sources vérifiées le ${e(dateFr(new Date(fiche.verifieeLe)))}.</p>
+  </section>`;
+}
+
+/** `ancres` : seulement sur /agir, où chaque voie est unique et visée par
+ *  les liens des pages de thème (un thème peut citer deux fois « Commune »). */
+function listeCompetences(competences: Competence[], ancres = false): string {
+  return `<dl class="fiche-competences">${competences.map((c) => `<div${ancres ? ` id="${e(slugDepuisTitre(c.niveau))}"` : ''}>
+      <dt>${e(c.niveau)}</dt>
+      <dd>${e(c.role)} <span class="fiche-source">— ${lienSource(c.source, c.url)}</span></dd>
+    </div>`).join('')}</dl>`;
+}
+
+/** L'encart « comment agir » d'une page de thème : les voies, en bref. */
+function encartAgir(idTheme: string, nom: string): string {
+  const voies = ficheDe(COMMENT_AGIR)?.competences ?? [];
+  const liens = voies.map((v) => `<li><a href="/agir#${e(slugDepuisTitre(v.niveau))}">${e(v.niveau)}</a></li>`).join('');
+  return `<section class="section fiche-agir" aria-labelledby="agir-titre">
+    <h2 id="agir-titre">Agir sur «&nbsp;${e(nom)}&nbsp;»</h2>
+    <p>Écrivez une idée concrète — problème, proposition, bénéficiaires, arbitrage, indicateur — et faites-la circuler.</p>
+    <div class="heros-actions">
+      <a class="bouton bouton-primaire" href="/proposer?theme=${e(idTheme)}">Proposer une idée sur ce thème</a>
+    </div>
+    ${liens ? `<p class="fiche-agir-voies-titre">Les voies officielles pour porter une idée&nbsp;:</p><ul class="fiche-agir-voies">${liens}</ul>` : ''}
+  </section>`;
+}
+
 export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soutenus', assets: Assets): string {
   const theme = themeParId(idTheme);
   const nom = theme ? theme.nom : idTheme;
+  const fiche = ficheDe(idTheme);
   const lienTri = tri === 'recent' ? 'soutenus' : 'recent';
   const texteTri = tri === 'recent' ? 'Le plus de « d’accord »' : 'Plus récentes';
   const contenu = `
 <div class="conteneur">
   <section class="section">
-    <div class="section-titre">
-      <h2>${e(nom)}</h2>
-      <a href="/theme/${e(idTheme)}?tri=${lienTri}">${texteTri} →</a>
-    </div>
+    <p class="fiche-fil"><a href="/themes">Thèmes</a></p>
+    <h1 class="page-titre">${e(nom)}</h1>
     ${theme ? `<p class="page-sous-titre">${e(theme.accroche)}.</p>` : ''}
-    ${chiffresDuTheme(idTheme)}
+    ${fiche ? '' : chiffresDuTheme(idTheme)}
+  </section>
+  ${fiche && fiche.chiffres.length > 0 ? sectionChiffresCles(fiche, idTheme) : ''}
+  ${fiche && fiche.competences.length > 0 ? `<section class="section" aria-labelledby="decide-titre">
+    <div class="section-titre"><h2 id="decide-titre">Qui décide</h2></div>
+    ${listeCompetences(fiche.competences)}
+  </section>` : ''}
+  <section class="section" id="idees">
+    <div class="section-titre">
+      <h2>Les idées</h2>
+      <a href="/theme/${e(idTheme)}?tri=${lienTri}#idees">${texteTri} →</a>
+    </div>
     ${grille(idees)}
   </section>
+  ${encartAgir(idTheme, nom)}
+  ${fiche && fiche.ressources.length > 0 ? `<section class="section">
+    ${sectionTitre('Pour aller plus loin')}
+    <ul class="liste-simple">${fiche.ressources.map((r) => `<li>${lienSource(r.nom, r.url)}</li>`).join('')}</ul>
+  </section>` : ''}
 </div>`;
-  return squelette({ titre: `${nom} — RatioPol`, description: `Idées citoyennes sur ${nom}.`, contenu, assets });
+  return squelette({
+    titre: `${nom} — chiffres, qui décide, idées — RatioPol`,
+    description: `${nom} : les chiffres officiels, qui décide et les idées citoyennes concrètes. ${theme ? theme.accroche : ''}.`,
+    contenu,
+    assets,
+  });
+}
+
+/** Toutes les voies officielles pour porter une idée. */
+export function pageAgir(assets: Assets): string {
+  const fiche = ficheDe(COMMENT_AGIR);
+  const contenu = `
+<div class="conteneur lecture">
+  <section class="section">
+    <h1 class="page-titre">Comment agir</h1>
+    <p class="page-sous-titre">Une idée écrite sur RatioPol est publique et réutilisable par tous.
+    Voici les voies officielles pour la porter jusqu’aux décideurs — avec leurs règles exactes et leurs sources.</p>
+    ${fiche ? listeCompetences(fiche.competences, true) : '<p class="vide">Bientôt.</p>'}
+    ${fiche && fiche.ressources.length > 0 ? `<h2 class="reperes-sur-titre">Pour aller plus loin</h2>
+    <ul class="liste-simple">${fiche.ressources.map((r) => `<li>${lienSource(r.nom, r.url)}</li>`).join('')}</ul>` : ''}
+    ${fiche ? `<p class="reperes-note">Règles vérifiées le ${e(dateFr(new Date(fiche.verifieeLe)))} sur les sources citées.</p>` : ''}
+    <div class="heros-actions"><a class="bouton bouton-primaire" href="/proposer">Proposer une idée</a></div>
+  </section>
+</div>`;
+  return squelette({
+    titre: 'Comment agir — pétitions, élus, consultations — RatioPol',
+    description: 'Les voies officielles pour porter une idée politique : pétitions de l’Assemblée et du Sénat, élus, consultations publiques, référendum d’initiative partagée.',
+    contenu,
+    assets,
+  });
 }
 
 /* ------------------------------------------------------------------ */
