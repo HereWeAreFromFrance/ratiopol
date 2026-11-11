@@ -101,6 +101,12 @@ test("l'accueil répond, avec ses en-têtes de sécurité", async () => {
     assert.match(r.corps, /href="\/reperes"/);
     assert.match(r.corps, /href="\/proposer"/);
     assert.match(r.corps, /\/graphiques\.css/);
+    // Les grands thèmes, directement visibles : les six familles et
+    // chaque thème (hors « Autre »), avant « La France en chiffres ».
+    assert.ok(r.corps.indexOf('Les grands thèmes') < r.corps.indexOf('La France en chiffres'));
+    for (const t of THEMES.filter((x) => x.id !== 'autre')) {
+      assert.ok(r.corps.includes(`href="/theme/${t.id}"`), `thème absent de l'accueil : ${t.id}`);
+    }
 
   } finally {
     ferme();

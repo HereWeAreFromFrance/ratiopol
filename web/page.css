@@ -321,6 +321,65 @@ main {
   padding: var(--r-esp-05) var(--r-esp-3);
 }
 
+/* Accueil : les grands thèmes d'un coup d'œil — six familles, chaque
+   thème en pastille cliquable. 1 colonne sur mobile, 2 puis 3. */
+.accueil-themes-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--r-carte-min), 1fr));
+  gap: var(--r-esp-4);
+}
+
+@media (min-width: 56rem) { /* = --r-ecran-palette */
+  .accueil-themes-grille {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.accueil-famille {
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-top: var(--r-esp-1) solid var(--r-accent);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-4) var(--r-esp-5) var(--r-esp-5);
+  box-shadow: var(--r-ombre-carte);
+}
+
+.accueil-famille h3 {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-titre);
+  margin-bottom: var(--r-esp-3);
+}
+
+.accueil-famille ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r-esp-2);
+}
+
+.accueil-famille a {
+  display: inline-block;
+  font-size: var(--r-txt-sm);
+  line-height: var(--r-txt-sm-h);
+  color: var(--r-accent);
+  background: var(--r-accent-doux);
+  border: var(--r-esp-1p) solid transparent;
+  border-radius: var(--r-rayon-plein);
+  padding: var(--r-esp-1) var(--r-esp-3);
+  text-decoration: none;
+  transition: border-color var(--r-duree-instant) var(--r-courbe-sortie);
+}
+
+.accueil-famille a:hover,
+.accueil-famille a:focus-visible {
+  border-color: var(--r-accent);
+}
+
 /* Thèmes : des familles de cartes. Chaque carte dit son nom et ses sujets
    concrets — on reconnaît le sien sans tout lire. */
 .themes-famille {

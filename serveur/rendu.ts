@@ -154,6 +154,15 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
       <a class="bouton bouton-secondaire" href="/themes">Parcourir par thème</a>
     </div>
   </section>
+  <section class="section accueil-themes" aria-labelledby="accueil-themes-titre">
+    <div class="section-titre"><h2 id="accueil-themes-titre">Les grands thèmes</h2><a href="/themes">Tous les thèmes et leurs sujets →</a></div>
+    <div class="accueil-themes-grille">${FAMILLES.map((f) => `
+      <div class="accueil-famille">
+        <h3>${e(f.nom)}</h3>
+        <ul>${themesDe(f.id).map((t) => `<li><a href="/theme/${e(t.id)}" title="${e(t.accroche)}">${e(t.nom)}</a></li>`).join('')}</ul>
+      </div>`).join('')}
+    </div>
+  </section>
   <section class="section accueil-france">
     ${sectionTitre('La France en chiffres', { href: '/reperes', texte: 'Tous les repères' })}
     <div class="accueil-france-grille">
