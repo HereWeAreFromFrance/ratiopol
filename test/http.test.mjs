@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES, THEMES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES, FAMILLES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -453,6 +453,47 @@ test('l’empreinte d’avis : stable dans le temps, propre à chaque idée', ()
   assert.notEqual(a, empreinteAvis('203.0.113.7', SEL, 'idee-b'));
   assert.notEqual(a, empreinteAvis('203.0.113.8', SEL, 'idee-a'));
   assert.doesNotMatch(a, /203/);
+});
+
+test('les thèmes : exhaustifs, rangés en familles, tous joignables', async () => {
+  // Ids uniques (ils sont stockés avec les idées), accroche partout.
+  const ids = THEMES.map((t) => t.id);
+  assert.equal(new Set(ids).size, ids.length, 'id de thème en double');
+  for (const t of THEMES) assert.ok(t.accroche.length > 10, `accroche vide : ${t.id}`);
+  // Chaque thème est dans une famille, sauf « Autre », le filet.
+  for (const t of THEMES.filter((x) => x.id !== 'autre')) {
+    assert.ok(FAMILLES.some((f) => f.id === t.famille), `thème sans famille : ${t.id}`);
+  }
+  // Des familles lisibles : ni vides, ni des murs.
+  for (const f of FAMILLES) {
+    const n = THEMES.filter((t) => t.famille === f.id).length;
+    assert.ok(n >= 2 && n <= 6, `famille ${f.id} : ${n} thèmes`);
+  }
+  // Les anciens ids, stockés avec des idées, existent toujours.
+  for (const ancien of ['logement', 'sante', 'ecole', 'travail', 'environnement', 'securite', 'impots', 'institutions', 'numerique', 'territoires', 'transports', 'autre']) {
+    assert.ok(ids.includes(ancien), `ancien thème disparu : ${ancien}`);
+  }
+
+  const { port, ferme } = await demarre();
+  try {
+    const page = (await requete(port, 'GET', '/themes')).corps;
+    for (const t of THEMES) assert.ok(page.includes(`href="/theme/${t.id}"`), `thème absent de /themes : ${t.id}`);
+    for (const f of FAMILLES) assert.ok(page.includes(f.nom.replace('&', '&amp;').replace('’', '’')), `famille absente : ${f.nom}`);
+    // Chaque page de thème répond, avec son accroche.
+    for (const t of THEMES) {
+      const r = await requete(port, 'GET', `/theme/${t.id}`);
+      assert.equal(r.status, 200, t.id);
+    }
+    // Un thème rattaché à des postes montre ses chiffres officiels.
+    assert.match((await requete(port, 'GET', '/theme/justice')).corps, /Justice&nbsp;: 13,0&nbsp;Md€/);
+    // Le formulaire groupe les thèmes par famille ; un nouveau thème passe.
+    const formulaire = (await requete(port, 'GET', '/proposer')).corps;
+    assert.match(formulaire, /<optgroup label="Numérique"><option value="numerique">/);
+    const depot = await requete(port, 'POST', '/proposer', corpsValide({ theme: 'ia' }), { 'Content-Type': 'application/x-www-form-urlencoded' });
+    assert.equal(depot.status, 303);
+  } finally {
+    ferme();
+  }
 });
 
 test('les repères budgétaires restent cohérents', () => {

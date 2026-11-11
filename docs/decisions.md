@@ -222,3 +222,28 @@ n'avait jamais pu tourner (« DepotPg is not a constructor »).
 sensible pour une représentativité de toute façon illusoire) ; clusters
 d'opinion à la Pol.is, qui exigent de relier les votes d'une personne —
 pas avant le jeton anonyme vérifié et un avis juridique (doc 04 §3).
+
+## 2026-11-11 — Thèmes : exhaustifs, rangés en familles
+
+Paul : « plusieurs thèmes, par exemple budget, écologie, énergie, service
+public, IA… exhaustif et en même temps attrayant ». De 12 thèmes à **25 +
+« Autre »**, en **six familles** (Au quotidien · Apprendre & travailler ·
+Vivre ensemble · Planète & territoires · L'État & la démocratie ·
+Numérique). La liste est calée sur les missions du budget de l'État :
+chaque poste des Repères mène à un thème précis (Défense → Europe, défense
+& monde ; Justice → Justice ; Cohésion des territoires, qui est surtout
+des aides au logement → Logement…). Le test des Repères le vérifie.
+
+**Exhaustif et attrayant à la fois** : chaque thème porte une **accroche**
+de sujets concrets (« Loyers, construction, rénovation… »), on reconnaît
+le sien sans lire 26 lignes. La page /themes présente des cartes par
+famille, le formulaire un menu en `optgroup` par famille, et chaque page
+de thème montre son accroche et **ses chiffres officiels** (les postes des
+Repères qui y mènent, avec source et millésime). Les accroches énumèrent
+des sujets, jamais une position (« nucléaire, renouvelables », pas
+« sortir du nucléaire »).
+
+**Ids stables** : stockés avec les idées, jamais renommés. Les douze
+anciens existent toujours (un test le vérifie) ; `impots` s'affiche
+désormais « Budget & impôts », `territoires` perd l'agriculture, qui a
+son propre thème. Aucune idée n'était publiée : rien à migrer.

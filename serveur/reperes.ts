@@ -49,18 +49,18 @@ export const BUDGET_ETAT = {
   depenses: [
     { id: 'etat-remboursements', nom: 'Remboursements et dégrèvements', mds: 145.6, theme: 'impots' },
     { id: 'etat-enseignement-scolaire', nom: 'Enseignement scolaire', mds: 89.6, theme: 'ecole' },
-    { id: 'etat-defense', nom: 'Défense', mds: 66.5, theme: 'securite' },
+    { id: 'etat-defense', nom: 'Défense', mds: 66.5, theme: 'international' },
     { id: 'etat-engagements-financiers', nom: 'Engagements financiers de l’État', mds: 60.3, theme: 'impots' },
-    { id: 'etat-recherche-sup', nom: 'Recherche et enseignement supérieur', mds: 31.6, theme: 'ecole' },
-    { id: 'etat-solidarite', nom: 'Solidarité, insertion et égalité des chances', mds: 31.3, theme: 'travail' },
+    { id: 'etat-recherche-sup', nom: 'Recherche et enseignement supérieur', mds: 31.6, theme: 'superieur' },
+    { id: 'etat-solidarite', nom: 'Solidarité, insertion et égalité des chances', mds: 31.3, theme: 'solidarites' },
     { id: 'etat-securites', nom: 'Sécurités', mds: 25.8, theme: 'securite' },
     { id: 'etat-ecologie', nom: 'Écologie, développement et mobilité durables', mds: 22.8, theme: 'environnement' },
-    { id: 'etat-cohesion-territoires', nom: 'Cohésion des territoires', mds: 22.6, theme: 'territoires' },
+    { id: 'etat-cohesion-territoires', nom: 'Cohésion des territoires', mds: 22.6, theme: 'logement' },
     { id: 'etat-travail-emploi', nom: 'Travail et emploi', mds: 20.8, theme: 'travail' },
-    { id: 'etat-justice', nom: 'Justice', mds: 13.0, theme: 'securite' },
-    { id: 'etat-gestion-finances', nom: 'Gestion des finances publiques', mds: 11.0, theme: 'institutions' },
-    { id: 'etat-administration', nom: 'Administration générale et territoriale de l’État', mds: 5.1, theme: 'institutions' },
-    { id: 'etat-france-2030', nom: 'Investir pour la France de 2030', mds: 4.4, theme: 'autre' },
+    { id: 'etat-justice', nom: 'Justice', mds: 13.0, theme: 'justice' },
+    { id: 'etat-gestion-finances', nom: 'Gestion des finances publiques', mds: 11.0, theme: 'impots' },
+    { id: 'etat-administration', nom: 'Administration générale et territoriale de l’État', mds: 5.1, theme: 'services-publics' },
+    { id: 'etat-france-2030', nom: 'Investir pour la France de 2030', mds: 4.4, theme: 'entreprises' },
   ] as Poste[],
   autresDepenses: { id: 'etat-autres-missions', nom: 'Autres missions (18)', mds: 43.5, theme: 'autre' } as Poste,
 
@@ -107,7 +107,7 @@ export const FINANCES_PUBLIQUES = {
   /** Dépenses par sous-secteur, telles que publiées (non consolidées). */
   sousSecteurs: [
     { id: 'apu-securite-sociale', nom: 'Administrations de sécurité sociale', mds: 803.2, theme: 'sante' },
-    { id: 'apu-etat', nom: 'État', mds: 607.7, theme: 'institutions' },
+    { id: 'apu-etat', nom: 'État', mds: 607.7, theme: 'impots' },
     { id: 'apu-locales', nom: 'Administrations publiques locales (communes, départements, régions)', mds: 335.5, theme: 'territoires' },
     { id: 'apu-odac', nom: 'Organismes divers d’administration centrale (ODAC)', mds: 142.3, theme: 'autre' },
   ] as Poste[],
@@ -168,6 +168,12 @@ export const POSTES_CIBLES: PosteCible[] = [
   ...cibles(BUDGET_ETAT.recettesFiscales, `Recettes de l’État — LFI ${BUDGET_ETAT.année}`),
   ...cibles(FINANCES_PUBLIQUES.sousSecteurs, `Dépenses publiques par sous-secteur — Insee ${FINANCES_PUBLIQUES.année}`),
 ];
+
+/** Le thème d'un poste (pour les chiffres d'une page de thème). */
+export function posteThemeParId(id: string): string | undefined {
+  return [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses, ...BUDGET_ETAT.recettesFiscales, ...FINANCES_PUBLIQUES.sousSecteurs]
+    .find((p) => p.id === id)?.theme;
+}
 
 export function posteCibleParId(id: string): PosteCible | undefined {
   return POSTES_CIBLES.find((p) => p.id === id);

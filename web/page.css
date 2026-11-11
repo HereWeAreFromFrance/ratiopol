@@ -321,6 +321,78 @@ main {
   padding: var(--r-esp-05) var(--r-esp-3);
 }
 
+/* Thèmes : des familles de cartes. Chaque carte dit son nom et ses sujets
+   concrets — on reconnaît le sien sans tout lire. */
+.themes-famille {
+  margin-top: var(--r-esp-10);
+}
+
+.themes-famille h2 {
+  font-size: var(--r-txt-xs);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-majuscules);
+  text-transform: uppercase;
+  color: var(--r-encre-douce);
+  padding-bottom: var(--r-esp-2);
+  border-bottom: var(--r-esp-1p) solid var(--r-filet);
+  margin-bottom: var(--r-esp-4);
+}
+
+.themes-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--r-carte-min), 1fr));
+  gap: var(--r-esp-4);
+}
+
+.carte-theme {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r-esp-2);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-left: var(--r-esp-1) solid var(--r-accent);
+  border-radius: var(--r-rayon-sm);
+  padding: var(--r-esp-4) var(--r-esp-5);
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--r-ombre-carte);
+  transition: border-color var(--r-duree-courte) var(--r-courbe-sortie),
+    background var(--r-duree-courte) var(--r-courbe-sortie);
+}
+
+.carte-theme:hover,
+.carte-theme:focus-visible {
+  border-color: var(--r-accent);
+  background: var(--r-accent-doux);
+}
+
+.carte-theme h3 {
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+  font-weight: var(--r-graisse-appuyee);
+  letter-spacing: var(--r-interlettre-titre);
+  color: var(--r-accent);
+}
+
+.carte-theme p {
+  font-size: var(--r-txt-sm);
+  line-height: var(--r-txt-sm-h);
+  color: var(--r-encre-douce);
+}
+
+.theme-chiffres {
+  margin-block: var(--r-esp-4) var(--r-esp-6);
+  font-size: var(--r-txt-sm);
+  line-height: var(--r-txt-sm-h);
+  color: var(--r-encre-douce);
+  max-width: var(--r-largeur-lecture);
+}
+
+.theme-chiffres-source {
+  color: var(--r-encre-legere);
+}
+
 /* 6. PAGE IDÉE --------------------------------------------------------------- */
 
 .idee-tete {

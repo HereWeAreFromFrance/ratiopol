@@ -10,8 +10,8 @@ import type { Avis, Decompte, Idee, Signalement } from './depot';
 import { MOTIFS_SIGNALEMENT } from './depot';
 import type { Erreurs, ValeursBrutes } from './gabarit';
 import { BORNES, EFFETS, UNITES } from './gabarit';
-import { NIVEAUX, THEMES, themeParId, niveauParId } from './themes';
-import { BUDGET_ETAT, FINANCES_PUBLIQUES, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, type Poste } from './reperes';
+import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
+import { BUDGET_ETAT, FINANCES_PUBLIQUES, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -205,19 +205,42 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
 /* Thèmes                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Une carte de thème : son nom et ses sujets concrets. */
+function carteTheme(t: { id: string; nom: string; accroche: string }): string {
+  return `<a class="carte-theme" href="/theme/${e(t.id)}"><h3>${e(t.nom)}</h3><p>${e(t.accroche)}</p></a>`;
+}
+
 export function pageThemes(assets: Assets): string {
-  const liens = THEMES.filter((t) => t.id !== 'autre')
-    .map((t) => `<a class="bouton bouton-secondaire" href="/theme/${t.id}">${e(t.nom)}</a>`)
-    .join('\n');
+  const familles = FAMILLES.map((f) => `
+  <section class="themes-famille" aria-labelledby="famille-${f.id}">
+    <h2 id="famille-${f.id}">${e(f.nom)}</h2>
+    <div class="themes-grille">${themesDe(f.id).map(carteTheme).join('')}</div>
+  </section>`).join('');
+  const autre = themeParId('autre');
   const contenu = `
-<div class="conteneur lecture">
+<div class="conteneur">
   <section class="section">
     <h1 class="page-titre">Thèmes</h1>
-    <p class="page-sous-titre">Toutes les idées, classées par sujet.</p>
-    <div class="heros-actions">${liens}</div>
+    <p class="page-sous-titre">Tous les sujets de l’action publique, du loyer à l’intelligence artificielle.
+    Choisissez-en un pour lire les idées — ou pour proposer la vôtre.</p>
+    ${familles}
+    ${autre ? `<p class="reperes-note">Votre sujet n’y est pas&nbsp;? <a href="/theme/autre">${e(autre.nom)}</a> l’accueille.</p>` : ''}
   </section>
 </div>`;
-  return squelette({ titre: 'Thèmes — RatioPol', description: 'Toutes les idées par thème.', contenu, assets });
+  return squelette({
+    titre: 'Thèmes — RatioPol',
+    description: `Les idées citoyennes classées en ${THEMES.length - 1} thèmes : logement, santé, énergie, budget, services publics, intelligence artificielle…`,
+    contenu,
+    assets,
+  });
+}
+
+/** Les postes officiels rattachés à un thème (mêmes liens que les Repères). */
+function chiffresDuTheme(idTheme: string): string {
+  const postes = POSTES_CIBLES.filter((p) => posteThemeParId(p.id) === idTheme);
+  if (postes.length === 0) return '';
+  const lignes = postes.map((p) => `${e(p.nom)}&nbsp;: ${formatteurMds.format(p.mds)}&nbsp;Md€ <span class="theme-chiffres-source">(${e(p.groupe)})</span>`);
+  return `<p class="theme-chiffres"><a href="/reperes">Chiffres officiels</a> — ${lignes.join(' · ')}</p>`;
 }
 
 export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soutenus', assets: Assets): string {
@@ -232,7 +255,8 @@ export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soute
       <h2>${e(nom)}</h2>
       <a href="/theme/${e(idTheme)}?tri=${lienTri}">${texteTri} →</a>
     </div>
-    ${idTheme === 'impots' ? '<p class="reperes-note">Les chiffres officiels du budget de l’État et des finances publiques sont sur la page <a href="/reperes">Repères</a>.</p>' : ''}
+    ${theme ? `<p class="page-sous-titre">${e(theme.accroche)}.</p>` : ''}
+    ${chiffresDuTheme(idTheme)}
     ${grille(idees)}
   </section>
 </div>`;
@@ -842,10 +866,10 @@ function champsImpact(valeurs?: ValeursBrutes, erreurs?: Erreurs): string {
 }
 
 export function pageProposer(assets: Assets, valeurs?: ValeursBrutes, erreurs?: Erreurs): string {
-  const themesOptions = THEMES.map((t) => {
-    const sel = typeof valeurs?.theme === 'string' && valeurs.theme === t.id ? ' selected' : '';
-    return `<option value="${t.id}"${sel}>${e(t.nom)}</option>`;
-  }).join('');
+  const optionTheme = (t: { id: string; nom: string }): string =>
+    `<option value="${t.id}"${valeurs?.theme === t.id ? ' selected' : ''}>${e(t.nom)}</option>`;
+  const themesOptions = FAMILLES.map((f) => `<optgroup label="${e(f.nom)}">${themesDe(f.id).map(optionTheme).join('')}</optgroup>`).join('')
+    + themesDe('').map(optionTheme).join('');
   const niveauxOptions = NIVEAUX.map((n) => {
     const sel = typeof valeurs?.niveau === 'string' && valeurs.niveau === n.id ? ' selected' : '';
     return `<option value="${n.id}"${sel}>${e(n.nom)}</option>`;
@@ -875,6 +899,7 @@ export function pageProposer(assets: Assets, valeurs?: ValeursBrutes, erreurs?: 
       ${champZone({ nom: 'indicateur', libelle: '5 · Comment saura-t-on que ça marche', aide: 'Un indicateur observable : un chiffre qui bougerait si votre idée était appliquée.', erreur: erreurs?.indicateur, valeur: valeur(valeurs, 'indicateur'), tailleMax: BORNES.indicateur[1] })}
       <div class="champ">
         <label for="theme">Thème</label>
+        <span class="aide">Le plus proche de votre idée — « Autre » sinon. <a href="/themes">Voir les thèmes et leurs sujets</a>.</span>
         ${erreurs?.theme ? `<p class="champ-erreur" role="alert">${e(erreurs.theme)}</p>` : ''}
         <select id="theme" name="theme" required>${themesOptions}</select>
       </div>

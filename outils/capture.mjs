@@ -111,6 +111,18 @@ for (const [nom, url, pleine] of pages) {
   await page.close();
 }
 
+// La page Thèmes : familles de cartes, desktop, mobile et sombre.
+for (const [largeur, hauteur, sombreT] of [[1440, 900, false], [360, 780, false], [1440, 900, true]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  if (sombreT) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await page.goto(base + '/themes', { waitUntil: 'networkidle0' });
+  const nom = `themes-${largeur}${sombreT ? '-sombre' : ''}`;
+  await page.screenshot({ path: `captures/${nom}.png`, fullPage: true });
+  console.log('capture', nom);
+  await page.close();
+}
+
 // Page idée chiffrée : mobile, desktop, sombre ; puis un avis donné par le
 // JS (bouton enfoncé, décompte mis à jour sans rechargement).
 for (const [largeur, hauteur, sombreIdee] of [[360, 780, false], [1280, 900, false], [1280, 900, true]]) {
