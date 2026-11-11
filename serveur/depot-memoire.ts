@@ -2,15 +2,29 @@
 //
 // Pour les tests : les routes s'exécutent pour de vrai (vraies sockets, vrai
 // HTTP) sans qu'aucune base ne soit nécessaire. Les règles métier — un
-// soutien par empreinte, le tri, le statut — y vivent comme en production :
+// avis par empreinte, le tri, le statut — y vivent comme en production :
 // une divergence entre les deux implantations est un bug, pas une nuance.
 
-import type { Depot, Idee, OptionsListe, Signalement, VoirAdmin } from './depot';
+import type { Avis, Decompte, Depot, Idee, OptionsListe, Signalement, VoirAdmin } from './depot';
+import { DECOMPTE_VIDE } from './depot';
+
+function decompte(avis: Iterable<Avis>): Decompte {
+  const d = { ...DECOMPTE_VIDE };
+  for (const a of avis) {
+    if (a.position === 'pour') d.pour++;
+    else if (a.position === 'contre') d.contre++;
+    else if (a.position === 'sans-avis') d.sansAvis++;
+    if (a.arbitrage === 'complet') d.arbComplet++;
+    else if (a.arbitrage === 'partiel') d.arbPartiel++;
+    else if (a.arbitrage === 'incomplet') d.arbIncomplet++;
+  }
+  return d;
+}
 
 export class DepotMemoire implements Depot {
   private idees: Idee[] = [];
   private idSuivant = 1;
-  private soutiens = new Map<string, Set<string>>(); // slug → empreintes
+  private avis = new Map<string, Map<string, Avis>>(); // slug → empreinte → avis
   private signalements: Signalement[] = [];
   private idSignalementSuivant = 1;
 
@@ -20,14 +34,14 @@ export class DepotMemoire implements Depot {
     if (opts.recherche) {
       const mots = opts.recherche.toLowerCase().split(/\s+/).filter(Boolean);
       jeu = jeu.filter((i) => {
-        const plat = (i.titre + ' ' + i.proposition + ' ' + i.probleme).toLowerCase();
+        const plat = [i.titre, i.probleme, i.proposition, i.beneficiaires, i.arbitrage, i.indicateur].join(' ').toLowerCase();
         return mots.every((m) => plat.includes(m));
       });
     }
     const tri = opts.tri ?? 'recent';
     jeu = [...jeu].sort((a, b) => {
       if (tri === 'soutenus') {
-        if (b.soutiens !== a.soutiens) return b.soutiens - a.soutiens;
+        if (b.avis.pour !== a.avis.pour) return b.avis.pour - a.avis.pour;
       }
       return b.creeeLe.getTime() - a.creeeLe.getTime();
     });
@@ -44,24 +58,32 @@ export class DepotMemoire implements Depot {
       id: this.idSuivant++,
       creeeLe: new Date(),
       statut: 'publiee',
-      soutiens: 0,
+      avis: { ...DECOMPTE_VIDE },
       ...entree,
     };
     this.idees.push(idee);
     return idee;
   }
 
-  soutien(slug: string, empreinte: string): Promise<number> {
+  async donneAvis(slug: string, empreinte: string, avis: Avis): Promise<Decompte> {
     const idee = this.idees.find((i) => i.slug === slug && i.statut === 'publiee');
-    if (!idee) return Promise.reject(new Error('idée inconnue'));
-    let ens = this.soutiens.get(slug);
-    if (!ens) {
-      ens = new Set();
-      this.soutiens.set(slug, ens);
+    if (!idee) throw new Error('idée inconnue');
+    let parEmpreinte = this.avis.get(slug);
+    if (!parEmpreinte) {
+      parEmpreinte = new Map();
+      this.avis.set(slug, parEmpreinte);
     }
-    ens.add(empreinte);
-    idee.soutiens = ens.size;
-    return Promise.resolve(ens.size);
+    const avant = parEmpreinte.get(empreinte);
+    parEmpreinte.set(empreinte, {
+      position: avis.position ?? avant?.position ?? null,
+      arbitrage: avis.arbitrage ?? avant?.arbitrage ?? null,
+    });
+    idee.avis = decompte(parEmpreinte.values());
+    return { ...idee.avis };
+  }
+
+  async avisDe(slug: string, empreinte: string): Promise<Avis | null> {
+    return this.avis.get(slug)?.get(empreinte) ?? null;
   }
 
   async signale(slug: string, motif: string, message: string): Promise<void> {
@@ -94,7 +116,7 @@ export class DepotMemoire implements Depot {
     if (idx === -1) throw new Error('idée inconnue');
     const idee = this.idees[idx]!;
     this.idees.splice(idx, 1);
-    this.soutiens.delete(idee.slug);
+    this.avis.delete(idee.slug);
     this.signalements = this.signalements.filter((s) => s.ideeId !== id);
   }
 }

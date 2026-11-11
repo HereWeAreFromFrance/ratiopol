@@ -22,7 +22,6 @@ function conforme(surcharge = {}) {
     theme: 'logement',
     niveau: 'etat',
     pseudo: 'Lou',
-    email: '',
     consentement: 'on',
     ...surcharge,
   };
@@ -32,7 +31,12 @@ test('une entrée conforme passe, nettoyée', () => {
   const { erreurs, entree } = valideEntree(conforme());
   assert.deepEqual(erreurs, {});
   assert.ok(entree);
-  assert.equal(entree.email, null);
+  // L'impact chiffré est optionnel : absent, il vaut null partout.
+  assert.equal(entree.effet, null);
+  assert.equal(entree.montantEuros, null);
+  assert.equal(entree.poste, null);
+  // L'e-mail n'existe plus : même envoyé, il n'est pas retenu.
+  assert.equal('email' in valideEntree(conforme({ email: 'lou@exemple.fr' })).entree, false);
   // Les espaces multiples sont réduits, les bords coupés.
   const { entree: e2 } = valideEntree(conforme({ pseudo: '  Lou   Dupont ' }));
   assert.equal(e2.pseudo, 'Lou Dupont');
@@ -76,11 +80,29 @@ test('thème et niveau doivent exister, consentement exigé', () => {
   assert.equal(valideEntree(conforme()).erreurs.consentement, undefined);
 });
 
-test("l'e-mail optionnel doit ressembler à une adresse", () => {
-  assert.ok(valideEntree(conforme({ email: 'pas-une-adresse' })).erreurs.email);
-  const ok = valideEntree(conforme({ email: 'lou@exemple.fr' }));
-  assert.equal(ok.erreurs.email, undefined);
-  assert.equal(ok.entree.email, 'lou@exemple.fr');
+test("l'impact chiffré : optionnel, mais cohérent", () => {
+  // Complet : montant français (virgule, espace) converti en euros.
+  const ok = valideEntree(conforme({ effet: 'cout', montant: ' 2,5 ', unite: 'Md', poste: 'etat-justice' }));
+  assert.deepEqual(ok.erreurs, {});
+  assert.equal(ok.entree.effet, 'cout');
+  assert.equal(ok.entree.montantEuros, 2.5e9);
+  assert.equal(ok.entree.poste, 'etat-justice');
+  assert.equal(valideEntree(conforme({ effet: 'gain', montant: '1 200', unite: 'k' })).entree.montantEuros, 1.2e6);
+  // Le sens sans montant, et « neutre », passent.
+  assert.deepEqual(valideEntree(conforme({ effet: 'gain' })).erreurs, {});
+  assert.deepEqual(valideEntree(conforme({ effet: 'neutre' })).erreurs, {});
+  // Un montant doit dire s'il coûte ou rapporte.
+  assert.ok(valideEntree(conforme({ montant: '3', unite: 'M' })).erreurs.montant);
+  assert.ok(valideEntree(conforme({ effet: 'neutre', montant: '3', unite: 'M' })).erreurs.montant);
+  // Pas de nombre fantaisiste, d'unité inconnue ni de faute de frappe géante.
+  for (const montant of ['-3', '0', 'beaucoup', '1e9', '3,14159']) {
+    assert.ok(valideEntree(conforme({ effet: 'cout', montant, unite: 'M' })).erreurs.montant, montant);
+  }
+  assert.ok(valideEntree(conforme({ effet: 'cout', montant: '3', unite: 'Gt' })).erreurs.montant);
+  assert.ok(valideEntree(conforme({ effet: 'cout', montant: '2001', unite: 'Md' })).erreurs.montant);
+  // Listes fermées.
+  assert.ok(valideEntree(conforme({ effet: 'magique' })).erreurs.effet);
+  assert.ok(valideEntree(conforme({ poste: 'mission-inventee' })).erreurs.poste);
 });
 
 test('le pseudonyme refuse les caractères de code', () => {

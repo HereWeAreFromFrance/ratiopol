@@ -24,6 +24,9 @@ function entree(slug) {
     theme: 'logement',
     niveau: 'etat',
     pseudo: 'Lou',
+    effet: 'cout',
+    montantEuros: 650e6,
+    poste: 'etat-justice',
   };
 }
 
@@ -45,17 +48,28 @@ test('dépôt PostgreSQL : migrations + parcours', { skip: URL_PG ? false : 'RP_
     const lue = await depot.ideeParSlug('essai-loyers');
     assert.ok(lue);
     assert.equal(lue.titre, idee.titre);
+    assert.equal(lue.effet, 'cout');
+    assert.equal(lue.montantEuros, 650e6);
+    assert.equal(lue.poste, 'etat-justice');
+    assert.equal((await depot.liste({ recherche: 'caution' })).length, 1, 'la recherche lit l’arbitrage');
     const duTheme = await depot.liste({ theme: 'logement' });
     assert.equal(duTheme.length, 1);
     assert.equal((await depot.liste({ theme: 'sante' })).length, 0);
   });
 
-  await t.test('soutien dédupliqué par empreinte', async () => {
-    assert.equal(await depot.soutien('essai-loyers', 'empreinte-a'), 1);
-    assert.equal(await depot.soutien('essai-loyers', 'empreinte-a'), 1);
-    assert.equal(await depot.soutien('essai-loyers', 'empreinte-b'), 2);
+  await t.test('avis dédupliqués par empreinte, modifiables', async () => {
+    assert.equal((await depot.donneAvis('essai-loyers', 'empreinte-a', { position: 'pour', arbitrage: null })).pour, 1);
+    assert.equal((await depot.donneAvis('essai-loyers', 'empreinte-a', { position: 'pour', arbitrage: null })).pour, 1);
+    assert.equal((await depot.donneAvis('essai-loyers', 'empreinte-b', { position: 'pour', arbitrage: null })).pour, 2);
+    const d = await depot.donneAvis('essai-loyers', 'empreinte-a', { position: null, arbitrage: 'incomplet' });
+    assert.deepEqual(d, { pour: 2, contre: 0, sansAvis: 0, arbComplet: 0, arbPartiel: 0, arbIncomplet: 1 });
+    await depot.donneAvis('essai-loyers', 'empreinte-b', { position: 'contre', arbitrage: null });
+    assert.deepEqual(await depot.avisDe('essai-loyers', 'empreinte-a'), { position: 'pour', arbitrage: 'incomplet' });
+    assert.equal(await depot.avisDe('essai-loyers', 'empreinte-z'), null);
     const lue = await depot.ideeParSlug('essai-loyers');
-    assert.equal(lue.soutiens, 2);
+    assert.equal(lue.avis.pour, 1);
+    assert.equal(lue.avis.contre, 1);
+    await assert.rejects(depot.donneAvis('nulle-part', 'empreinte-a', { position: 'pour', arbitrage: null }));
   });
 
   await t.test('signalement, masquage, suppression', async () => {

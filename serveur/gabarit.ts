@@ -11,8 +11,18 @@
 // multiples réduits). Elles veulent forcer la concrétude sans exclure qui ne
 // écrit pas bien : 60 caractères de problème, c'est deux phrases — assez
 // pour nommer une situation, pas assez pour un pamphlet.
+//
+// L'IMPACT CHIFFRÉ (décision du 11/11/2026) : effet sur les finances
+// publiques, montant annuel estimé, poste budgétaire touché. OPTIONNEL —
+// la concrétude reste exigée par les cinq champs ; le chiffrage rend les
+// idées comparables entre elles et avec les Repères. Seule la cohérence
+// est exigée : un montant dit s'il coûte ou rapporte.
+//
+// Pas d'e-mail (même décision) : il était validé puis jeté, jamais stocké.
+// Minimisation : on ne collecte pas ce qu'on n'utilise pas.
 
 import { THEMES, NIVEAUX } from './themes';
+import { posteCibleParId } from './reperes';
 
 /** Bornes par champ : [min, max] en caractères. */
 export const BORNES = {
@@ -25,7 +35,26 @@ export const BORNES = {
   pseudo: [3, 40],
 } as const;
 
-export type ChampIdee = keyof typeof BORNES | 'theme' | 'niveau' | 'email' | 'consentement';
+export type ChampIdee = keyof typeof BORNES | 'theme' | 'niveau' | 'effet' | 'montant' | 'poste' | 'consentement';
+
+/** Effet déclaré sur les finances publiques. */
+export const EFFETS = [
+  { id: 'cout', nom: 'Coûte (dépense en plus ou recette en moins)' },
+  { id: 'gain', nom: 'Rapporte (économie ou recette en plus)' },
+  { id: 'neutre', nom: 'Neutre pour les finances publiques' },
+] as const;
+export type Effet = (typeof EFFETS)[number]['id'];
+
+/** Unités du montant annuel, en euros. */
+export const UNITES = [
+  { id: 'k', nom: 'k€ par an', euros: 1e3 },
+  { id: 'M', nom: 'M€ par an', euros: 1e6 },
+  { id: 'Md', nom: 'Md€ par an', euros: 1e9 },
+] as const;
+
+/** Plafond du montant : au-delà de la dépense publique totale (1 714 Md€),
+ *  c'est une faute de frappe, pas une estimation. */
+export const MONTANT_MAX_EUROS = 2000e9;
 
 /** Les valeurs brutes sorties d'un formulaire (tout est optionnel et sale). */
 export interface ValeursBrutes {
@@ -38,7 +67,10 @@ export interface ValeursBrutes {
   theme?: unknown;
   niveau?: unknown;
   pseudo?: unknown;
-  email?: unknown;
+  effet?: unknown;
+  montant?: unknown;
+  unite?: unknown;
+  poste?: unknown;
   consentement?: unknown;
 }
 
@@ -53,7 +85,12 @@ export interface EntreeValide {
   theme: string;
   niveau: string;
   pseudo: string;
-  email: string | null;
+  effet: Effet | null;
+  /** Montant annuel estimé par l'auteur, en euros (toujours positif :
+   *  le sens est dans `effet`). */
+  montantEuros: number | null;
+  /** Id d'un poste de reperes.ts (POSTES_CIBLES). */
+  poste: string | null;
 }
 
 /** Erreurs par champ : champ → message humain. Vide = entrée valide. */
@@ -75,7 +112,9 @@ const MESSAGES = {
   pseudo: 'Le pseudonyme doit faire 3 à 40 caractères (lettres, chiffres, espaces, apostrophes, tirets).',
   theme: 'Choisissez un thème dans la liste.',
   niveau: 'Choisissez le niveau territorial concerné.',
-  email: 'Cette adresse e-mail ne semble pas valide.',
+  effet: 'Choisissez un effet dans la liste — ou laissez « Je ne sais pas ».',
+  montant: 'Le montant est un nombre positif (ex. 2,5) avec son unité, au plus 2 000 Md€ par an — et il faut dire s’il coûte ou rapporte.',
+  poste: 'Choisissez un poste dans la liste — ou laissez « Aucun ».',
   consentement: 'Le consentement à la publication est nécessaire : votre contribution révèle une opinion politique.',
 } as const;
 
@@ -102,8 +141,24 @@ export function valideEntree(brutes: ValeursBrutes): { erreurs: Erreurs; entree:
   const niveau = nettoie(brutes.niveau);
   if (!NIVEAUX.some((n) => n.id === niveau)) erreurs.niveau = MESSAGES.niveau;
 
-  const email = nettoie(brutes.email);
-  if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) erreurs.email = MESSAGES.email;
+  // L'impact chiffré, optionnel mais cohérent.
+  const effetBrut = nettoie(brutes.effet);
+  const effet = EFFETS.find((x) => x.id === effetBrut)?.id ?? null;
+  if (effetBrut !== '' && !effet) erreurs.effet = MESSAGES.effet;
+
+  const montantBrut = nettoie(brutes.montant).replace(/[\s\u00a0\u202f]/g, '').replace(',', '.');
+  let montantEuros: number | null = null;
+  if (montantBrut !== '') {
+    const unite = UNITES.find((u) => u.id === nettoie(brutes.unite));
+    const n = /^\d+(\.\d{1,3})?$/.test(montantBrut) ? Number(montantBrut) : NaN;
+    montantEuros = unite && n > 0 ? Math.round(n * unite.euros) : null;
+    if (montantEuros === null || montantEuros > MONTANT_MAX_EUROS || (effet !== 'cout' && effet !== 'gain')) {
+      erreurs.montant = MESSAGES.montant;
+    }
+  }
+
+  const posteBrut = nettoie(brutes.poste);
+  if (posteBrut !== '' && !posteCibleParId(posteBrut)) erreurs.poste = MESSAGES.poste;
 
   if (brutes.consentement !== 'on' && brutes.consentement !== 'true' && brutes.consentement !== true) {
     erreurs.consentement = MESSAGES.consentement;
@@ -123,7 +178,9 @@ export function valideEntree(brutes: ValeursBrutes): { erreurs: Erreurs; entree:
       pseudo: champs.pseudo!,
       theme,
       niveau,
-      email: email === '' ? null : email,
+      effet,
+      montantEuros,
+      poste: posteBrut === '' ? null : posteBrut,
     },
   };
 }

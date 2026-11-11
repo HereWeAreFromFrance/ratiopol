@@ -9,7 +9,7 @@
 // LES GARDE-FOUS (un serveur public est exposé, sans exception) :
 //  · corps de requête plafonné (64 Kio — le formulaire le plus gros fait
 //    ~7 Kio) ;
-//  · rythme plafonné par empreinte : dépôts, soutiens, signalements, essais
+//  · rythme plafonné par empreinte : dépôts, avis, signalements, essais
 //    de connexion admin ;
 //  · champ-piège anti-robots (honeypot) sur le dépôt ;
 //  · en-têtes de sécurité sur TOUTES les réponses (CSP sans exception
@@ -19,12 +19,14 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { join, normalize } from 'node:path';
-import type { Depot } from './depot';
+import type { Avis, Depot } from './depot';
+import { JUGEMENTS_ARBITRAGE, POSITIONS } from './depot';
 import { slugDepuisTitre, valideEntree, type ValeursBrutes } from './gabarit';
 import { DepotMemoire } from './depot-memoire';
 import {
   cookieAdmin,
   cookieAdminEfface,
+  empreinteAvis,
   empreinteIp,
   ipDe,
   jetonAdminValide,
@@ -39,9 +41,11 @@ import type { Assets } from './rendu';
 import { THEMES } from './themes';
 
 export { DepotMemoire } from './depot-memoire';
+// Pour test/pg.test.mjs (le paquet `postgres` est externe : rien de plus lourd).
+export { DepotPg } from './postgres';
 export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
-export { echappe, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
-export { BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION } from './reperes';
+export { echappe, empreinteAvis, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
+export { BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES } from './reperes';
 export { THEMES } from './themes';
 export type { Assets } from './rendu';
 
@@ -120,7 +124,10 @@ function versBrutes(form: URLSearchParams): ValeursBrutes {
     theme: form.get('theme') ?? undefined,
     niveau: form.get('niveau') ?? undefined,
     pseudo: form.get('pseudo') ?? undefined,
-    email: form.get('email') ?? undefined,
+    effet: form.get('effet') ?? undefined,
+    montant: form.get('montant') ?? undefined,
+    unite: form.get('unite') ?? undefined,
+    poste: form.get('poste') ?? undefined,
     consentement: form.get('consentement') ?? undefined,
   };
 }
@@ -165,7 +172,7 @@ export function creeServeur(opts: OptionsServeur): Server {
   const limiteur = new Limiteur();
   const PLAFONDS = {
     depot: { max: 5, fenetre: 10 * 60 * 1000 },
-    soutien: { max: 20, fenetre: 60 * 1000 },
+    avis: { max: 30, fenetre: 60 * 1000 },
     signalement: { max: 10, fenetre: 60 * 60 * 1000 },
     connexion: { max: 10, fenetre: 60 * 60 * 1000 },
   } as const;
@@ -271,7 +278,10 @@ ${urls}
         envoieTexte(res, 404, rendu.page404(assets));
         return;
       }
-      envoieTexte(res, 200, rendu.pageIdee(idee, url.searchParams.get('merci') === '1', assets));
+      // L'avis déjà donné depuis cette adresse s'affiche (bouton enfoncé) :
+      // on voit qu'on peut le changer, sans compte ni cookie.
+      const sonAvis = await depot.avisDe(slug, empreinteAvis(ip, sel, slug));
+      envoieTexte(res, 200, rendu.pageIdee(idee, sonAvis, url.searchParams.get('merci') === '1', assets));
       return;
     }
     if (methode === 'GET' && chemin === '/recherche') {
@@ -347,27 +357,39 @@ ${urls}
       return;
     }
 
-    // ---- Soutien
-    const mSoutien = chemin.match(/^\/idee\/([^/]+)\/soutien$/);
-    if (methode === 'POST' && mSoutien) {
-      const slug = mSoutien[1]!;
-      if (!limiteur.autorise(`soutien:${empreinte}`, PLAFONDS.soutien.max, PLAFONDS.soutien.fenetre, maintenant())) {
-        envoieTexte(res, 429, 'trop de soutiens à la suite', 'text/plain; charset=utf-8');
+    // ---- Avis (d'accord / pas d'accord, jugement de l'arbitrage).
+    // /soutien reste une porte : d'anciennes pages en cache y postent.
+    const mAvis = chemin.match(/^\/idee\/([^/]+)\/(avis|soutien)$/);
+    if (methode === 'POST' && mAvis) {
+      const slug = mAvis[1]!;
+      if (!limiteur.autorise(`avis:${empreinte}`, PLAFONDS.avis.max, PLAFONDS.avis.fenetre, maintenant())) {
+        envoieTexte(res, 429, 'trop d’avis à la suite', 'text/plain; charset=utf-8');
         return;
       }
-      if (!(await lisFormulaire(req))) {
+      const form = await lisFormulaire(req);
+      if (!form) {
         envoieTexte(res, 413, 'corps refusé', 'text/plain; charset=utf-8');
         return;
       }
+      const avis: Avis = mAvis[2] === 'soutien'
+        ? { position: 'pour', arbitrage: null }
+        : {
+            position: POSITIONS.find((p) => p === form.get('position')) ?? null,
+            arbitrage: JUGEMENTS_ARBITRAGE.find((j) => j === form.get('arbitrage')) ?? null,
+          };
+      if (!avis.position && !avis.arbitrage) {
+        envoieTexte(res, 400, 'avis vide ou inconnu', 'text/plain; charset=utf-8');
+        return;
+      }
       try {
-        const total = await depot.soutien(slug, empreinte);
+        const decompte = await depot.donneAvis(slug, empreinteAvis(ip, sel, slug), avis);
         if (veJ) {
           enTetesSecurite(res);
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-          res.end(JSON.stringify({ soutiens: total }));
+          res.end(JSON.stringify({ decompte, avis: await depot.avisDe(slug, empreinteAvis(ip, sel, slug)) }));
           return;
         }
-        redirige(res, `/idee/${slug}`);
+        redirige(res, `/idee/${slug}#avis`);
       } catch {
         envoieTexte(res, 404, rendu.page404(assets));
       }

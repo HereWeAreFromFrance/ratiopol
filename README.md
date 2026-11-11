@@ -15,8 +15,8 @@ outil gratuit et utile en autarcie ; développement sur mesure, léger, sur le
 VPS existant.
 
 **La v1 est construite** (08/11 au soir) : serveur Node sans framework, rendu
-HTML côté serveur, PostgreSQL, gabarit d'idée à cinq champs, soutiens
-dédupliqués, signalements, modération admin, 18 tests verts. Voir
+HTML côté serveur, PostgreSQL, gabarit d’idée à cinq champs + impact chiffré optionnel, avis
+dédupliqués par idée, signalements, modération admin, 24 tests verts. Voir
 `ARCHITECTURE.md` et `CLAUDE.md`.
 
 ## Commandes

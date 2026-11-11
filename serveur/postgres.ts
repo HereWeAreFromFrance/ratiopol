@@ -6,7 +6,8 @@
 // concaténation de texte utilisateur dans le SQL, jamais.
 
 import postgres from 'postgres';
-import type { Depot, Idee, OptionsListe, Signalement, VoirAdmin } from './depot';
+import type { Avis, Decompte, Depot, Idee, JugementArbitrage, OptionsListe, Position, Signalement, VoirAdmin } from './depot';
+import type { Effet } from './gabarit';
 
 interface LigneIdee {
   id: number | bigint;
@@ -20,9 +21,42 @@ interface LigneIdee {
   theme: string;
   niveau: string;
   pseudo: string;
+  effet: string | null;
+  montant_euros: number | bigint | string | null;
+  poste: string | null;
   statut: string;
   creee_le: Date;
-  soutiens: number | bigint | string | null;
+  pour: Nombre;
+  contre: Nombre;
+  sans_avis: Nombre;
+  arb_complet: Nombre;
+  arb_partiel: Nombre;
+  arb_incomplet: Nombre;
+}
+
+/** count(*) et BIGINT arrivent en texte : on convertit à la lecture. */
+type Nombre = number | bigint | string | null;
+const n = (v: Nombre): number => Number(v ?? 0);
+
+/** Le décompte des avis d'une idée, en colonnes — jointure LATERAL, pour
+ *  que la liste, la page et l'admin comptent tous de la même façon. */
+const COLONNES_AVIS = `
+  count(*) FILTER (WHERE a.position = 'pour')        AS pour,
+  count(*) FILTER (WHERE a.position = 'contre')      AS contre,
+  count(*) FILTER (WHERE a.position = 'sans-avis')   AS sans_avis,
+  count(*) FILTER (WHERE a.arbitrage = 'complet')    AS arb_complet,
+  count(*) FILTER (WHERE a.arbitrage = 'partiel')    AS arb_partiel,
+  count(*) FILTER (WHERE a.arbitrage = 'incomplet')  AS arb_incomplet`;
+
+function enDecompte(l: Pick<LigneIdee, 'pour' | 'contre' | 'sans_avis' | 'arb_complet' | 'arb_partiel' | 'arb_incomplet'>): Decompte {
+  return {
+    pour: n(l.pour),
+    contre: n(l.contre),
+    sansAvis: n(l.sans_avis),
+    arbComplet: n(l.arb_complet),
+    arbPartiel: n(l.arb_partiel),
+    arbIncomplet: n(l.arb_incomplet),
+  };
 }
 
 function enIdee(l: LigneIdee): Idee {
@@ -38,9 +72,12 @@ function enIdee(l: LigneIdee): Idee {
     theme: l.theme,
     niveau: l.niveau,
     pseudo: l.pseudo,
+    effet: (l.effet as Effet | null) ?? null,
+    montantEuros: l.montant_euros === null ? null : Number(l.montant_euros),
+    poste: l.poste,
     statut: l.statut === 'masquee' ? 'masquee' : 'publiee',
     creeeLe: new Date(l.creee_le),
-    soutiens: Number(l.soutiens ?? 0),
+    avis: enDecompte(l),
   };
 }
 
@@ -60,6 +97,15 @@ export class DepotPg implements Depot {
     return this.sql.end({ timeout: 5 });
   }
 
+  /** Le SELECT commun : l'idée et son décompte d'avis. */
+  private selectIdees() {
+    return this.sql`
+      SELECT i.*, d.* FROM idees i
+      LEFT JOIN LATERAL (
+        SELECT ${this.sql.unsafe(COLONNES_AVIS)} FROM avis a WHERE a.idee_id = i.id
+      ) d ON true`;
+  }
+
   async liste(opts: OptionsListe): Promise<Idee[]> {
     // Les conditions s'assemblent en fragments paramétrés : rien
     // d'utilisateur n'entre dans le SQL autrement qu'en paramètre $n.
@@ -69,16 +115,16 @@ export class DepotPg implements Depot {
       const mots = opts.recherche.split(/\s+/).filter(Boolean).slice(0, 8);
       for (const mot of mots) {
         const motif = '%' + mot + '%';
-        filtre = this.sql`${filtre} AND (titre ILIKE ${motif} OR probleme ILIKE ${motif} OR proposition ILIKE ${motif})`;
+        filtre = this.sql`${filtre} AND (titre ILIKE ${motif} OR probleme ILIKE ${motif} OR proposition ILIKE ${motif}
+          OR beneficiaires ILIKE ${motif} OR arbitrage ILIKE ${motif} OR indicateur ILIKE ${motif})`;
       }
     }
 
-    const tri = opts.tri === 'soutenus' ? this.sql`soutiens DESC, creee_le DESC` : this.sql`creee_le DESC`;
+    const tri = opts.tri === 'soutenus' ? this.sql`pour DESC, creee_le DESC` : this.sql`creee_le DESC`;
     const limite = Math.min(opts.limite ?? 50, 100);
 
     const lignes = await this.sql<LigneIdee[]>`
-      SELECT i.*, (SELECT count(*) FROM soutiens s WHERE s.idee_id = i.id) AS soutiens
-      FROM idees i
+      ${this.selectIdees()}
       WHERE ${filtre}
       ORDER BY ${tri}
       LIMIT ${limite}
@@ -88,8 +134,7 @@ export class DepotPg implements Depot {
 
   async ideeParSlug(slug: string): Promise<Idee | null> {
     const lignes = await this.sql<LigneIdee[]>`
-      SELECT i.*, (SELECT count(*) FROM soutiens s WHERE s.idee_id = i.id) AS soutiens
-      FROM idees i
+      ${this.selectIdees()}
       WHERE i.slug = ${slug} AND i.statut = 'publiee'
       LIMIT 1
     `;
@@ -99,29 +144,45 @@ export class DepotPg implements Depot {
   async cree(entree: Parameters<Depot['cree']>[0], empreinte: string): Promise<Idee> {
     const lignes = await this.sql<LigneIdee[]>`
       INSERT INTO idees (slug, titre, probleme, proposition, beneficiaires, arbitrage,
-                         indicateur, theme, niveau, pseudo, empreinte)
+                         indicateur, theme, niveau, pseudo, effet, montant_euros, poste, empreinte)
       VALUES (${entree.slug}, ${entree.titre}, ${entree.probleme}, ${entree.proposition},
               ${entree.beneficiaires}, ${entree.arbitrage}, ${entree.indicateur},
-              ${entree.theme}, ${entree.niveau}, ${entree.pseudo}, ${empreinte})
+              ${entree.theme}, ${entree.niveau}, ${entree.pseudo}, ${entree.effet},
+              ${entree.montantEuros}, ${entree.poste}, ${empreinte})
       RETURNING id, slug, titre, probleme, proposition, beneficiaires, arbitrage,
-                indicateur, theme, niveau, pseudo, statut, creee_le, 0 AS soutiens
+                indicateur, theme, niveau, pseudo, effet, montant_euros, poste, statut, creee_le,
+                0 AS pour, 0 AS contre, 0 AS sans_avis, 0 AS arb_complet, 0 AS arb_partiel, 0 AS arb_incomplet
     `;
     return enIdee(lignes[0]!);
   }
 
-  async soutien(slug: string, empreinte: string): Promise<number> {
-    // INSERT ... ON CONFLICT DO NOTHING : un soutien par (idée, empreinte).
-    await this.sql`
-      INSERT INTO soutiens (idee_id, empreinte)
-      SELECT id, ${empreinte} FROM idees WHERE slug = ${slug} AND statut = 'publiee'
-      ON CONFLICT (idee_id, empreinte) DO NOTHING
+  async donneAvis(slug: string, empreinte: string, avis: Avis): Promise<Decompte> {
+    // Un avis par (idée, empreinte), modifiable : la moitié nulle garde
+    // l'existant (COALESCE), l'autre le remplace.
+    const posees = await this.sql<{ idee_id: number | bigint }[]>`
+      INSERT INTO avis (idee_id, empreinte, position, arbitrage)
+      SELECT id, ${empreinte}, ${avis.position}, ${avis.arbitrage} FROM idees
+      WHERE slug = ${slug} AND statut = 'publiee'
+      ON CONFLICT (idee_id, empreinte) DO UPDATE SET
+        position  = COALESCE(EXCLUDED.position, avis.position),
+        arbitrage = COALESCE(EXCLUDED.arbitrage, avis.arbitrage),
+        le = now()
+      RETURNING idee_id
     `;
-    const total = await this.sql<{ total: number | bigint | string }[]>`
-      SELECT count(*) AS total FROM soutiens s
-      JOIN idees i ON i.id = s.idee_id
-      WHERE i.slug = ${slug}
+    if (posees.length === 0) throw new Error('idée inconnue');
+    const lignes = await this.sql<LigneIdee[]>`
+      SELECT ${this.sql.unsafe(COLONNES_AVIS)} FROM avis a WHERE a.idee_id = ${Number(posees[0]!.idee_id)}
     `;
-    return Number(total[0]?.total ?? 0);
+    return enDecompte(lignes[0]!);
+  }
+
+  async avisDe(slug: string, empreinte: string): Promise<Avis | null> {
+    const lignes = await this.sql<{ position: string | null; arbitrage: string | null }[]>`
+      SELECT a.position, a.arbitrage FROM avis a JOIN idees i ON i.id = a.idee_id
+      WHERE i.slug = ${slug} AND a.empreinte = ${empreinte}
+    `;
+    const l = lignes[0];
+    return l ? { position: l.position as Position | null, arbitrage: l.arbitrage as JugementArbitrage | null } : null;
   }
 
   async signale(slug: string, motif: string, message: string): Promise<void> {
@@ -133,8 +194,7 @@ export class DepotPg implements Depot {
 
   async pourAdmin(): Promise<VoirAdmin> {
     const idees = await this.sql<LigneIdee[]>`
-      SELECT i.*, (SELECT count(*) FROM soutiens s WHERE s.idee_id = i.id) AS soutiens
-      FROM idees i
+      ${this.selectIdees()}
       ORDER BY i.creee_le DESC
       LIMIT 500
     `;
@@ -155,7 +215,7 @@ export class DepotPg implements Depot {
   }
 
   async supprime(id: number): Promise<void> {
-    await this.sql`DELETE FROM soutiens WHERE idee_id = ${id}`;
+    await this.sql`DELETE FROM avis WHERE idee_id = ${id}`;
     await this.sql`DELETE FROM signalements WHERE idee_id = ${id}`;
     await this.sql`DELETE FROM idees WHERE id = ${id}`;
   }

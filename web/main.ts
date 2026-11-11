@@ -4,7 +4,8 @@
 // côté serveur. Il n'ajoute que du confort :
 //  · compteurs de caractères sur les champs du formulaire guidé (borne
 //    visible = gabarit compris avant l'erreur) ;
-//  · soutien sans recharger la page (le formulaire natif reste le secours) ;
+//  · avis (d'accord / pas d'accord, jugement de l'arbitrage) sans recharger
+//    la page — le formulaire natif reste le secours ;
 //  · les annonces de visite /_vu (visites.ts, le contrat maison) ;
 //  · le simulateur d'hypothèse sur /reperes (simulateur.ts) : deux
 //    poignées sur la courbe d'évolution, solde recalculé — arithmétique
@@ -22,7 +23,6 @@ const BORNES: Record<string, [number, number]> = {
   arbitrage: [20, 1000],
   indicateur: [10, 400],
   pseudo: [3, 40],
-  email: [3, 254],
 };
 
 function poseCompteurs(): void {
@@ -44,28 +44,39 @@ function poseCompteurs(): void {
   }
 }
 
-function poseSoutien(): void {
-  for (const form of document.querySelectorAll<HTMLFormElement>('.js-soutien')) {
+function poseAvis(): void {
+  for (const form of document.querySelectorAll<HTMLFormElement>('.js-avis')) {
     form.addEventListener('submit', async (evenement) => {
+      const bouton = evenement.submitter;
+      if (!(bouton instanceof HTMLButtonElement)) return; // secours natif
       evenement.preventDefault();
-      const bouton = form.querySelector<HTMLButtonElement>('button');
-      if (!bouton) return;
       try {
         const reponse = await fetch(form.action, {
           method: 'POST',
           headers: { Accept: 'application/json' },
-          body: new URLSearchParams(),
+          body: new URLSearchParams({ [bouton.name]: bouton.value }),
         });
         if (!reponse.ok) throw new Error(String(reponse.status));
-        const donnees = (await reponse.json()) as { soutiens: number };
-        const total = document.querySelector('.js-total');
-        if (total) {
-          total.textContent = String(donnees.soutiens);
-          bouton.textContent = 'Soutenu — merci';
+        const donnees = (await reponse.json()) as {
+          decompte: Record<string, number>;
+          avis: { position: string | null; arbitrage: string | null } | null;
+        };
+        for (const compte of document.querySelectorAll<HTMLElement>('.idee-avis-compte[data-cle]')) {
+          const n = donnees.decompte[compte.dataset.cle ?? ''];
+          if (typeof n === 'number') compte.textContent = String(n);
         }
-        bouton.disabled = true;
+        for (const b of document.querySelectorAll<HTMLButtonElement>('.js-avis button[name]')) {
+          const actuel = donnees.avis?.[b.name as 'position' | 'arbitrage'] ?? null;
+          b.setAttribute('aria-pressed', String(actuel === b.value));
+        }
       } catch {
-        // Le secours natif : on laisse le formulaire faire son POST plein.
+        // Le secours natif : le POST plein, avec la valeur du bouton cliqué
+        // (form.submit() seul la perdrait).
+        const cache = document.createElement('input');
+        cache.type = 'hidden';
+        cache.name = bouton.name;
+        cache.value = bouton.value;
+        form.append(cache);
         form.submit();
       }
     });
@@ -73,6 +84,6 @@ function poseSoutien(): void {
 }
 
 poseCompteurs();
-poseSoutien();
+poseAvis();
 poseSimulateur();
 annoncerVisites();

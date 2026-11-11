@@ -49,6 +49,11 @@ const exemples = [
     theme: 'transports',
     niveau: 'etat',
     pseudo: 'Camille',
+    // Une idée chiffrée : le bloc « impact » et sa part du poste officiel.
+    effet: 'cout',
+    montant: '45',
+    unite: 'M',
+    poste: 'etat-ecologie',
   },
 ];
 
@@ -92,6 +97,43 @@ for (const [nom, url, pleine] of pages) {
   await page.goto(url, { waitUntil: 'networkidle0' });
   await page.screenshot({ path: `captures/${nom}.png`, fullPage: pleine });
   console.log('capture', nom);
+  await page.close();
+}
+
+// Le groupe « impact chiffré » du formulaire, seul (la capture pleine page
+// du formulaire serait trop haute pour être lue).
+{
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: 1280, height: 900 });
+  await page.goto(base + '/proposer', { waitUntil: 'networkidle0' });
+  await (await page.$('.champ-groupe')).screenshot({ path: 'captures/proposer-impact.png' });
+  console.log('capture proposer-impact');
+  await page.close();
+}
+
+// Page idée chiffrée : mobile, desktop, sombre ; puis un avis donné par le
+// JS (bouton enfoncé, décompte mis à jour sans rechargement).
+for (const [largeur, hauteur, sombreIdee] of [[360, 780, false], [1280, 900, false], [1280, 900, true]]) {
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: largeur, height: hauteur });
+  if (sombreIdee) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await page.goto(base + '/idee/' + slugs[1], { waitUntil: 'networkidle0' });
+  const nom = `idee-chiffree-${largeur}${sombreIdee ? '-sombre' : ''}`;
+  await page.screenshot({ path: `captures/${nom}.png`, fullPage: true });
+  console.log('capture', nom);
+  await page.close();
+}
+{
+  const page = await navigateur.newPage();
+  await page.setViewport({ width: 1280, height: 900 });
+  await page.goto(base + '/idee/' + slugs[1], { waitUntil: 'networkidle0' });
+  await page.click('button[name="position"][value="contre"]');
+  await page.click('button[name="arbitrage"][value="complet"]');
+  await page.waitForFunction(() => document.querySelector('button[value="complet"]')?.getAttribute('aria-pressed') === 'true');
+  const etat = await page.evaluate(() => [...document.querySelectorAll('.js-avis button')].map((b) => `${b.value}=${b.getAttribute('aria-pressed')}:${b.querySelector('.idee-avis-compte')?.textContent}`).join(' '));
+  console.log('avis après clics :', etat, '— URL', page.url());
+  await page.screenshot({ path: 'captures/idee-avis-donne.png', fullPage: true });
+  console.log('capture idee-avis-donne');
   await page.close();
 }
 

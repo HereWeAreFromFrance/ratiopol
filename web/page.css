@@ -355,23 +355,79 @@ main {
   white-space: pre-line;
 }
 
-.idee-pied {
-  margin-top: var(--r-esp-10);
-  padding-top: var(--r-esp-6);
-  border-top: var(--r-esp-1p) solid var(--r-filet);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--r-esp-4);
-  flex-wrap: wrap;
+.idee-impact-liste {
+  display: grid;
+  gap: var(--r-esp-2);
   font-size: var(--r-txt-sm);
+}
+
+.idee-impact-liste div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r-esp-1) var(--r-esp-3);
+}
+
+.idee-impact-liste dt {
   color: var(--r-encre-douce);
 }
 
-.compteur-soutiens {
+.idee-impact-liste dt::after {
+  content: ' :';
+}
+
+.idee-impact-liste dd {
+  font-weight: var(--r-graisse-moyenne);
   font-variant-numeric: tabular-nums;
+}
+
+/* Plus précis que .idee-bloc p : la note n'est pas du corps de lecture. */
+.idee-bloc .idee-impact-note,
+.idee-avis-note {
+  margin-top: var(--r-esp-3);
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-xs);
+  line-height: var(--r-txt-xs-h);
+  color: var(--r-encre-legere);
+  white-space: normal;
+}
+
+/* Les avis : deux questions indépendantes, des boutons qui restent
+   enfoncés (aria-pressed) sur l'avis déjà donné. Aucune couleur de
+   jugement : « pas d'accord » a la même allure que « d'accord ». */
+.idee-avis {
+  margin-top: var(--r-esp-10);
+  padding-top: var(--r-esp-6);
+  border-top: var(--r-esp-1p) solid var(--r-filet);
+  display: grid;
+  gap: var(--r-esp-5);
+}
+
+.idee-avis h2 {
+  font-size: var(--r-txt-lg);
+  line-height: var(--r-txt-lg-h);
+}
+
+.idee-avis-question {
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+  margin-bottom: var(--r-esp-2);
+}
+
+.idee-avis-boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--r-esp-2);
+}
+
+.idee-avis-boutons .bouton[aria-pressed='true'] {
+  background: var(--r-accent-doux);
+  border-color: var(--r-accent);
   font-weight: var(--r-graisse-appuyee);
-  color: var(--r-encre);
+}
+
+.idee-avis-compte {
+  font-variant-numeric: tabular-nums;
+  color: var(--r-encre-douce);
 }
 
 /* 7. FORMULAIRE -------------------------------------------------------------- */
@@ -463,6 +519,46 @@ main {
   height: 1rem;
   accent-color: var(--r-accent);
   flex: none;
+}
+
+/* Le groupe « impact chiffré » : optionnel, il se distingue des cinq
+   champs exigés par un cadre en creux. */
+.champ-groupe {
+  display: grid;
+  gap: var(--r-esp-4);
+  border: var(--r-esp-1p) solid var(--r-filet);
+  border-radius: var(--r-rayon-md);
+  padding: var(--r-esp-4) var(--r-esp-5) var(--r-esp-5);
+}
+
+.champ-groupe legend {
+  font-weight: var(--r-graisse-appuyee);
+  padding-inline: var(--r-esp-2);
+}
+
+.champ-optionnel {
+  font-weight: var(--r-graisse-normale);
+  color: var(--r-encre-douce);
+}
+
+.champ-groupe > .aide {
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+}
+
+.champ-ligne {
+  display: flex;
+  gap: var(--r-esp-2);
+}
+
+.champ-ligne input {
+  flex: 1;
+  min-width: 0;
+}
+
+.champ-ligne select {
+  flex: none;
+  width: auto;
 }
 
 /* Le champ-piège anti-robots : hors écran, invisible, jamais rempli par un

@@ -16,7 +16,7 @@ aucun démarchage, un très bon outil gratuit — cf. `docs/decisions.md`.
   modération est publique (`/moderation`), le filtre anti-attaque est dans le
   gabarit et la modération a posteriori.
 - **Minimisation RGPD art. 9** : les opinions politiques sont des données
-  sensibles. Pas d'IP en clair (empreinte hachée du jour), pas de profilage,
+  sensibles. Pas d'IP en clair (empreintes hachées : du jour pour le rythme, par idée pour les avis), pas de profilage,
   consentement explicite au dépôt, suppression sur demande.
 - **Les tests verts précèdent tout déploiement** — le déployeur refuse sinon.
 
@@ -24,7 +24,7 @@ aucun démarchage, un très bon outil gratuit — cf. `docs/decisions.md`.
 
 ```sh
 npm run build     # esbuild : front + serveur → dist/
-npm test          # build + node --test (18 tests, ~1 s)
+npm test          # build + node --test (24 tests, ~1 s)
 npm run migrer    # pose base/migrations/ (RP_PG_URL requis)
 node deploiement/deployer.mjs          # déploie (git propre + poussé requis)
 node deploiement/deployer.mjs --retour # retour arrière
@@ -43,7 +43,7 @@ Voir `ARCHITECTURE.md`. L'essentiel :
 - **Interface `Depot`** (`serveur/depot.ts`) : `DepotMemoire` (tests),
   `DepotPg` (production, PostgreSQL, base `ratiopol_database`).
 - **JS navigateur minimal** (`web/main.ts`) : compteurs de caractères et
-  soutien sans rechargement. Le site marche sans lui.
+  avis sans rechargement. Le site marche sans lui.
 - Les **tests importent `dist/serveur.mjs`** : on teste le binaire déployé.
 
 ## Environnement (production : `/etc/ratiopol.env` sur le VPS)

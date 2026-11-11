@@ -1,7 +1,7 @@
 // test/http.test.mjs — LE PARCOURS COMPLET, SUR DE VRAIES SOCKETS.
 //
 // Le serveur démarre pour de vrai (port éphémère, dépôt en mémoire) et ces
-// tests lui parlent en HTTP. Dépôt → publication → soutien → signalement →
+// tests lui parlent en HTTP. Dépôt → publication → avis → signalement →
 // modération, plus les garde-fous (gabarit, champ-piège, rythme, XSS,
 // en-têtes de sécurité). La règle vient de MateMaterial : la plomberie se
 // traverse pour de vrai — ici, sans exception levée à la main.
@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, THEMES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -121,7 +121,7 @@ test('HEAD est traité comme GET, sans corps', async () => {
   }
 });
 
-test('parcours complet : dépôt, page, soutiens dédupliqués, signalement', async () => {
+test('parcours complet : dépôt, page, avis dédupliqués et modifiables, signalement', async () => {
   const { port, ferme } = await demarre();
   // ferme() en finally : une assertion qui saute ne doit pas laisser
   // un serveur ouvert qui ferait pendre toute la suite de tests.
@@ -144,15 +144,54 @@ test('parcours complet : dépôt, page, soutiens dédupliqués, signalement', as
     assert.match(page.corps, /Encadrer les loyers/);
     assert.match(page.corps, /arbitrage — qui paie/);
 
-    // Deux soutiens de la même empreinte ne comptent qu'une fois (JSON).
-    const s1 = await requete(port, 'POST', `/idee/${slug}/soutien`, '', { Accept: 'application/json' });
-    const s2 = await requete(port, 'POST', `/idee/${slug}/soutien`, '', { Accept: 'application/json' });
-    assert.equal(JSON.parse(s1.corps).soutiens, 1);
-    assert.equal(JSON.parse(s2.corps).soutiens, 1);
+    // La page offre les deux questions, sans avis enfoncé au départ.
+    assert.match(page.corps, /name="position" value="contre" aria-pressed="false"/);
+    assert.match(page.corps, /name="arbitrage" value="partiel"/);
+    assert.doesNotMatch(page.corps, /aria-pressed="true"/);
 
-    // L'accueil montre l'idée et son soutien.
+    // Deux « d'accord » de la même adresse ne comptent qu'une fois (JSON).
+    const json = { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' };
+    const a1 = await requete(port, 'POST', `/idee/${slug}/avis`, 'position=pour', json);
+    const a2 = await requete(port, 'POST', `/idee/${slug}/avis`, 'position=pour', json);
+    assert.equal(JSON.parse(a1.corps).decompte.pour, 1);
+    assert.equal(JSON.parse(a2.corps).decompte.pour, 1);
+
+    // Le jugement de l'arbitrage s'ajoute sans toucher à la position…
+    const a3 = JSON.parse((await requete(port, 'POST', `/idee/${slug}/avis`, 'arbitrage=partiel', json)).corps);
+    assert.deepEqual(a3.avis, { position: 'pour', arbitrage: 'partiel' });
+    assert.equal(a3.decompte.arbPartiel, 1);
+    // …et la position se change : elle passe de « pour » à « contre ».
+    const a4 = JSON.parse((await requete(port, 'POST', `/idee/${slug}/avis`, 'position=contre', json)).corps);
+    assert.equal(a4.decompte.pour, 0);
+    assert.equal(a4.decompte.contre, 1);
+    assert.equal(a4.avis.arbitrage, 'partiel');
+
+    // Un avis vide ou inventé est refusé.
+    assert.equal((await requete(port, 'POST', `/idee/${slug}/avis`, 'position=adore', json)).status, 400);
+    // Une idée inconnue : 404.
+    assert.equal((await requete(port, 'POST', '/idee/nulle-part/avis', 'position=pour', json)).status, 404);
+
+    // Sans JS : POST natif → retour à la section des avis.
+    const natif = await requete(port, 'POST', `/idee/${slug}/avis`, 'position=sans-avis', {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    });
+    assert.equal(natif.status, 303);
+    assert.equal(natif.entetes.location, `/idee/${slug}#avis`);
+
+    // La page montre l'avis déjà donné depuis cette adresse.
+    const relue = await requete(port, 'GET', `/idee/${slug}`);
+    assert.match(relue.corps, /value="sans-avis" aria-pressed="true"/);
+    assert.match(relue.corps, /value="partiel" aria-pressed="true"/);
+    assert.match(relue.corps, /value="pour" aria-pressed="false"/);
+
+    // L'ancienne porte /soutien (pages en cache) vaut « d'accord ».
+    const vieux = JSON.parse((await requete(port, 'POST', `/idee/${slug}/soutien`, '', json)).corps);
+    assert.equal(vieux.decompte.pour, 1);
+    assert.equal(vieux.decompte.sansAvis, 0);
+
+    // L'accueil montre l'idée et son décompte.
     const accueil = await requete(port, 'GET', '/');
-    assert.match(accueil.corps, /1 soutien/);
+    assert.match(accueil.corps, /1 d’accord · 0 pas d’accord/);
 
     // Un signalement passe et ramène la page avec le remerciement.
     const sig = await requete(port, 'POST', `/idee/${slug}/signalement`, 'motif=Autre&message=', {
@@ -369,6 +408,53 @@ test('un slug de remontée ne sort jamais du répertoire statique', async () => 
   }
 });
 
+test('l’impact chiffré : formulaire, page, part du poste officiel', async () => {
+  const { port, ferme } = await demarre();
+  try {
+    const formulaire = (await requete(port, 'GET', '/proposer')).corps;
+    // Plus de champ e-mail ; les trois champs d'impact, optionnels.
+    assert.doesNotMatch(formulaire, /name="email"/);
+    for (const champ of ['effet', 'montant', 'unite', 'poste']) assert.match(formulaire, new RegExp(`name="${champ}"`));
+    assert.match(formulaire, /<option value="etat-justice">Justice — 13,0 Md€<\/option>/);
+
+    const entetes = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    // Incohérent : un montant sans sens → le formulaire revient, valeurs gardées.
+    const ko = await requete(port, 'POST', '/proposer', corpsValide({ montant: '650', unite: 'M', poste: 'etat-justice' }), entetes);
+    assert.equal(ko.status, 422);
+    assert.match(ko.corps, /coûte ou rapporte/);
+    assert.match(ko.corps, /value="650"/);
+    assert.match(ko.corps, /<option value="etat-justice" selected>/);
+
+    // Cohérent : 650 M€ sur la Justice (13,0 Md€) → 5,0 %.
+    const ok = await requete(port, 'POST', '/proposer', corpsValide({ effet: 'cout', montant: '650', unite: 'M', poste: 'etat-justice' }), entetes);
+    assert.equal(ok.status, 303);
+    const page = (await requete(port, 'GET', ok.entetes.location)).corps;
+    assert.match(page, /L’impact chiffré — estimation de l’auteur/);
+    assert.match(page, /650\u00a0M€ par an/);
+    assert.match(page, /Soit 5,0\u00a0% du montant de ce poste/);
+    assert.match(page, /Dépenses de l’État — LFI 2026/);
+    // La carte d'accueil le résume.
+    assert.match((await requete(port, 'GET', '/')).corps, /coûte ≈\u00a0650\u00a0M€\/an/);
+
+    // Une idée non chiffrée le dit, sans plus.
+    const nue = await requete(port, 'POST', '/proposer', corpsValide({ titre: 'Une autre idée de logement étudiant' }), entetes);
+    assert.match((await requete(port, 'GET', nue.entetes.location)).corps, /L’auteur n’a pas chiffré cette idée/);
+  } finally {
+    ferme();
+  }
+});
+
+test('l’empreinte d’avis : stable dans le temps, propre à chaque idée', () => {
+  const a = empreinteAvis('203.0.113.7', SEL, 'idee-a');
+  // Pas de jour dans le hachage : demain, la même adresse est reconnue.
+  assert.equal(a, empreinteAvis('203.0.113.7', SEL, 'idee-a'));
+  // Une autre idée donne une autre empreinte : les avis d'une personne ne
+  // se relient pas entre eux.
+  assert.notEqual(a, empreinteAvis('203.0.113.7', SEL, 'idee-b'));
+  assert.notEqual(a, empreinteAvis('203.0.113.8', SEL, 'idee-a'));
+  assert.doesNotMatch(a, /203/);
+});
+
 test('les repères budgétaires restent cohérents', () => {
   // Ce test protège la mise à jour annuelle de serveur/reperes.ts : si une
   // part ne tient plus dans son total, un montant a été mal recopié de la
@@ -404,6 +490,12 @@ test('les repères budgétaires restent cohérents', () => {
     assert.ok(p.theme, `poste sans thème : ${p.nom}`);
     assert.ok(THEMES.some((t) => t.id === p.theme), `thème inconnu « ${p.theme} » pour : ${p.nom}`);
   }
+
+  // Les postes qu'une idée peut viser : ids uniques, tous présents, et la
+  // liste couvre chaque poste non méthodologique.
+  const ids = POSTES_CIBLES.map((p) => p.id);
+  assert.equal(new Set(ids).size, ids.length, 'id de poste en double');
+  assert.equal(POSTES_CIBLES.length, postes.length, 'un poste n’a pas d’id');
 
   // La série d'évolution : cinq années chacune, et sa dernière valeur est
   // celle de « L'essentiel » (même source, même année — elles doivent dire

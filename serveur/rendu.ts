@@ -6,12 +6,12 @@
 // moteur, pas de dépendance. TOUT texte qui vient d'un visiteur passe par
 // echappe() : c'est la seule porte anti-XSS, elle est toujours fermée.
 
-import type { Idee, Signalement } from './depot';
+import type { Avis, Decompte, Idee, Signalement } from './depot';
 import { MOTIFS_SIGNALEMENT } from './depot';
 import type { Erreurs, ValeursBrutes } from './gabarit';
-import { BORNES } from './gabarit';
+import { BORNES, EFFETS, UNITES } from './gabarit';
 import { NIVEAUX, THEMES, themeParId, niveauParId } from './themes';
-import { BUDGET_ETAT, FINANCES_PUBLIQUES, SOURCES_REPERES, ÉVOLUTION, type Poste } from './reperes';
+import { BUDGET_ETAT, FINANCES_PUBLIQUES, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, type Poste } from './reperes';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -26,6 +26,30 @@ const formatteurEntier = new Intl.NumberFormat('fr-FR');
 
 function dateFr(d: Date): string {
   return formatteurDate.format(d);
+}
+
+const formatteurMontant = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+
+/** Un montant en euros, dans l'unité la plus lisible (k€, M€, Md€). */
+export function montantTexte(euros: number): string {
+  if (euros >= 1e9) return `${formatteurMontant.format(euros / 1e9)}\u00a0Md€`;
+  if (euros >= 1e6) return `${formatteurMontant.format(euros / 1e6)}\u00a0M€`;
+  return `${formatteurMontant.format(euros / 1e3)}\u00a0k€`;
+}
+
+/** La part d'un montant dans un poste officiel : une division, affichée
+ *  au dixième — sous le dixième, on le dit plutôt que d'écrire « 0,0 % ». */
+export function partTexte(euros: number, posteMds: number): string {
+  const pct = (euros / (posteMds * 1e9)) * 100;
+  return pct < 0.1 ? 'moins de 0,1\u00a0%' : `${formatteurMds.format(pct)}\u00a0%`;
+}
+
+/** L'effet chiffré en quelques mots, pour les cartes. */
+function impactCourt(idee: Idee): string {
+  if (idee.effet === 'neutre') return 'neutre pour les finances publiques';
+  if (idee.effet !== 'cout' && idee.effet !== 'gain') return '';
+  const verbe = idee.effet === 'cout' ? 'coûte' : 'rapporte';
+  return idee.montantEuros === null ? verbe : `${verbe} ≈\u00a0${montantTexte(idee.montantEuros)}/an`;
 }
 
 function e(s: string): string {
@@ -96,7 +120,7 @@ function carteIdee(idee: Idee): string {
   <p>${e(idee.proposition)}</p>
   <span class="carte-idee-meta">
     <span>${e(idee.pseudo)}, ${e(dateFr(idee.creeeLe))}</span>
-    <span>${idee.soutiens} soutien${idee.soutiens > 1 ? 's' : ''}</span>
+    <span>${idee.avis.pour} d’accord · ${idee.avis.contre} pas d’accord${impactCourt(idee) ? ` · ${e(impactCourt(idee))}` : ''}</span>
   </span>
 </a>`;
 }
@@ -160,7 +184,7 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
     </div>
   </section>
   <section class="section">
-    ${sectionTitre('Les plus soutenues', { href: '/themes', texte: 'Tous les thèmes' })}
+    ${sectionTitre('Le plus de « d’accord »', { href: '/themes', texte: 'Tous les thèmes' })}
     ${grille(soutenues)}
   </section>
   <section class="section">
@@ -200,7 +224,7 @@ export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soute
   const theme = themeParId(idTheme);
   const nom = theme ? theme.nom : idTheme;
   const lienTri = tri === 'recent' ? 'soutenus' : 'recent';
-  const texteTri = tri === 'recent' ? 'Les plus soutenues' : 'Plus récentes';
+  const texteTri = tri === 'recent' ? 'Le plus de « d’accord »' : 'Plus récentes';
   const contenu = `
 <div class="conteneur">
   <section class="section">
@@ -630,7 +654,72 @@ function bloc(titre: string, texte: string): string {
   return `<section class="idee-bloc"><h2>${e(titre)}</h2><p>${e(texte)}</p></section>`;
 }
 
-export function pageIdee(idee: Idee, merci: boolean, assets: Assets): string {
+/** L'impact chiffré déclaré par l'auteur, rapporté au chiffre officiel du
+ *  poste visé. Règles des Repères : le dénominateur porte sa source et son
+ *  millésime, aucun adjectif ; l'estimation est dite « de l'auteur ». */
+function blocImpact(idee: Idee): string {
+  const titre = '<h2>L’impact chiffré — estimation de l’auteur</h2>';
+  const effet = EFFETS.find((x) => x.id === idee.effet);
+  const poste = idee.poste ? posteCibleParId(idee.poste) : undefined;
+  if (!effet && idee.montantEuros === null && !poste) {
+    return `<section class="idee-bloc idee-impact">${titre}<p class="idee-impact-note">L’auteur n’a pas chiffré cette idée.</p></section>`;
+  }
+  const lignes: string[] = [];
+  if (effet) lignes.push(`<div><dt>Effet sur les finances publiques</dt><dd>${e(effet.nom)}</dd></div>`);
+  if (idee.montantEuros !== null) lignes.push(`<div><dt>Montant estimé</dt><dd>${montantTexte(idee.montantEuros)} par an</dd></div>`);
+  if (poste) {
+    lignes.push(`<div><dt>Poste touché</dt><dd><a href="/reperes">${e(poste.nom)}</a> — ${formatteurMds.format(poste.mds)}&nbsp;Md€ (${e(poste.groupe)})</dd></div>`);
+  }
+  const part = poste && idee.montantEuros !== null
+    ? `Soit ${partTexte(idee.montantEuros, poste.mds)} du montant de ce poste. `
+    : '';
+  return `<section class="idee-bloc idee-impact">${titre}
+    <dl class="idee-impact-liste">${lignes.join('')}</dl>
+    <p class="idee-impact-note">${part}Estimation déclarée par l’auteur, non vérifiée par RatioPol&nbsp;;
+    le montant du poste est le chiffre officiel publié.</p>
+  </section>`;
+}
+
+/** Les boutons d'avis : de vrais formulaires (marchent sans JS), un bouton
+ *  enfoncé pour l'avis déjà donné depuis cette adresse. */
+function boutonsAvis(
+  slug: string,
+  champ: 'position' | 'arbitrage',
+  question: string,
+  choix: { valeur: string; libelle: string; cle: keyof Decompte }[],
+  decompte: Decompte,
+  actuel: string | null,
+): string {
+  const idQ = `q-${champ}`;
+  const boutons = choix
+    .map((c) => `<button class="bouton bouton-secondaire" type="submit" name="${champ}" value="${c.valeur}" aria-pressed="${actuel === c.valeur}">${e(c.libelle)} <span class="idee-avis-compte" data-cle="${c.cle}">${decompte[c.cle]}</span></button>`)
+    .join('\n');
+  return `<form method="post" action="/idee/${e(slug)}/avis" class="js-avis idee-avis-groupe">
+    <p class="idee-avis-question" id="${idQ}">${question}</p>
+    <div class="idee-avis-boutons" role="group" aria-labelledby="${idQ}">${boutons}</div>
+  </form>`;
+}
+
+function sectionAvis(idee: Idee, sonAvis: Avis | null): string {
+  return `<section class="idee-avis" id="avis" aria-labelledby="avis-titre">
+    <h2 id="avis-titre">Votre avis</h2>
+    ${boutonsAvis(idee.slug, 'position', 'Sur le fond, cette idée&nbsp;:', [
+      { valeur: 'pour', libelle: 'D’accord', cle: 'pour' },
+      { valeur: 'contre', libelle: 'Pas d’accord', cle: 'contre' },
+      { valeur: 'sans-avis', libelle: 'Sans avis', cle: 'sansAvis' },
+    ], idee.avis, sonAvis?.position ?? null)}
+    ${boutonsAvis(idee.slug, 'arbitrage', 'L’arbitrage (qui paie, qui perd quoi) est exposé de façon&nbsp;:', [
+      { valeur: 'complet', libelle: 'Complète', cle: 'arbComplet' },
+      { valeur: 'partiel', libelle: 'Partielle', cle: 'arbPartiel' },
+      { valeur: 'incomplet', libelle: 'Incomplète', cle: 'arbIncomplet' },
+    ], idee.avis, sonAvis?.arbitrage ?? null)}
+    <p class="idee-avis-note">Les deux questions sont indépendantes&nbsp;: on peut juger un arbitrage
+    complet sans être d’accord avec l’idée. Un avis par idée et par connexion, modifiable.
+    Indicatif&nbsp;: ni vote, ni sondage représentatif.</p>
+  </section>`;
+}
+
+export function pageIdee(idee: Idee, sonAvis: Avis | null, merci: boolean, assets: Assets): string {
   const theme = themeParId(idee.theme);
   const niveau = niveauParId(idee.niveau);
   const motifs = MOTIFS_SIGNALEMENT.map((m) => `<option value="${e(m)}">${e(m)}</option>`).join('');
@@ -647,13 +736,9 @@ export function pageIdee(idee: Idee, merci: boolean, assets: Assets): string {
     ${bloc('Les bénéficiaires', idee.beneficiaires)}
     ${bloc("L'arbitrage — qui paie, qui perd quoi", idee.arbitrage)}
     ${bloc('Comment saura-t-on que ça marche', idee.indicateur)}
+    ${blocImpact(idee)}
   </div>
-  <div class="idee-pied">
-    <form method="post" action="/idee/${e(idee.slug)}/soutien" class="js-soutien">
-      <button class="bouton bouton-primaire" type="submit">Je soutiens cette idée</button>
-    </form>
-    <span><span class="compteur-soutiens js-total">${idee.soutiens}</span> soutien${idee.soutiens > 1 ? 's' : ''} <span aria-hidden="true">·</span> indicatif</span>
-  </div>
+  ${sectionAvis(idee, sonAvis)}
   ${merci ? '<p class="champ-erreur" role="status">Signalement enregistré — merci. La modération le lira.</p>' : ''}
   <details style="margin-top:var(--r-esp-6)">
     <summary style="cursor:pointer;color:var(--r-encre-douce)">Signaler cette idée</summary>
@@ -717,6 +802,45 @@ function champZone(opts: { nom: string; libelle: string; aide: string; erreur?: 
 </div>`;
 }
 
+/** Le select d'une liste fermée, avec la valeur déjà saisie resélectionnée. */
+function options(liste: readonly { id: string; nom: string }[], choisi: unknown): string {
+  return liste.map((o) => `<option value="${e(o.id)}"${choisi === o.id ? ' selected' : ''}>${e(o.nom)}</option>`).join('');
+}
+
+/** 6 · L'impact chiffré : optionnel, cohérent (gabarit.ts). */
+function champsImpact(valeurs?: ValeursBrutes, erreurs?: Erreurs): string {
+  const erreur = (m?: string): string => (m ? `<p class="champ-erreur" role="alert">${e(m)}</p>` : '');
+  const groupes = [...new Set(POSTES_CIBLES.map((p) => p.groupe))]
+    .map((g) => `<optgroup label="${e(g)}">${options(POSTES_CIBLES.filter((p) => p.groupe === g).map((p) => ({ id: p.id, nom: `${p.nom} — ${formatteurMds.format(p.mds)} Md€` })), valeurs?.poste)}</optgroup>`)
+    .join('');
+  const unite = typeof valeurs?.unite === 'string' && valeurs.unite !== '' ? valeurs.unite : 'M';
+  return `<fieldset class="champ-groupe">
+        <legend>6 · L’impact chiffré <span class="champ-optionnel">(optionnel)</span></legend>
+        <span class="aide">Un ordre de grandeur suffit. Il rend votre idée comparable aux autres et aux
+        <a href="/reperes">chiffres officiels</a>. Laissez vide si vous ne savez pas.</span>
+        <div class="champ">
+          <label for="effet">Effet sur les finances publiques</label>
+          ${erreur(erreurs?.effet)}
+          <select id="effet" name="effet"><option value="">Je ne sais pas</option>${options(EFFETS, valeurs?.effet)}</select>
+        </div>
+        <div class="champ">
+          <label for="montant">Montant annuel estimé</label>
+          <span class="aide">Ex. : 2,5 Md€ par an. Une dépense ponctuelle&nbsp;: divisez-la par sa durée.</span>
+          ${erreur(erreurs?.montant)}
+          <div class="champ-ligne">
+            <input id="montant" name="montant" type="text" inputmode="decimal" value="${valeur(valeurs, 'montant')}" maxlength="20" autocomplete="off">
+            <select name="unite" aria-label="Unité du montant">${options(UNITES, unite)}</select>
+          </div>
+        </div>
+        <div class="champ">
+          <label for="poste">Poste budgétaire touché</label>
+          <span class="aide">Le poste des Repères le plus proche de votre idée — le montant sera rapporté à son chiffre officiel.</span>
+          ${erreur(erreurs?.poste)}
+          <select id="poste" name="poste"><option value="">Aucun / je ne sais pas</option>${groupes}</select>
+        </div>
+      </fieldset>`;
+}
+
 export function pageProposer(assets: Assets, valeurs?: ValeursBrutes, erreurs?: Erreurs): string {
   const themesOptions = THEMES.map((t) => {
     const sel = typeof valeurs?.theme === 'string' && valeurs.theme === t.id ? ' selected' : '';
@@ -760,7 +884,7 @@ export function pageProposer(assets: Assets, valeurs?: ValeursBrutes, erreurs?: 
         <select id="niveau" name="niveau" required>${niveauxOptions}</select>
       </div>
       ${champTexte({ nom: 'pseudo', libelle: 'Pseudonyme', aide: 'Le nom qui sera affiché. Il ne dit pas qui vous êtes — c’est le principe.', erreur: erreurs?.pseudo, valeur: valeur(valeurs, 'pseudo'), tailleMax: BORNES.pseudo[1] })}
-      ${champTexte({ nom: 'email', libelle: 'E-mail (optionnel)', aide: 'Seulement si vous acceptez d’être contacté au sujet de votre idée. Jamais affiché.', erreur: erreurs?.email, valeur: valeur(valeurs, 'email'), type: 'email', tailleMax: 254 })}
+      ${champsImpact(valeurs, erreurs)}
       <div class="champ-piege" aria-hidden="true">
         <label for="site-web">Ne pas remplir</label>
         <input id="site-web" name="site-web" type="text" tabindex="-1" autocomplete="off">
@@ -885,16 +1009,17 @@ export function pageMentions(assets: Assets): string {
       (RGPD art. 9). Elles ne sont publiées qu'avec votre consentement explicite, recueilli au
       moment du dépôt — la case à cocher du formulaire.</p>
       <ul class="liste-simple">
-        <li><strong>Ce qu'on garde&nbsp;:</strong> le contenu de votre idée, le pseudonyme choisi,
-        le thème, la date. L'e-mail uniquement si vous le donnez (pour être contacté), jamais
-        affiché.</li>
+        <li><strong>Ce qu'on garde&nbsp;:</strong> le contenu de votre idée (chiffrage compris),
+        le pseudonyme choisi, le thème, la date. Aucune adresse e-mail.</li>
         <li><strong>Ce qu'on ne garde pas&nbsp;:</strong> pas de compte, pas de trace de navigation
-        profilée, pas de cookie publicitaire, pas d'adresse IP en clair. Pour dédupliquer les
-        soutiens, seule une empreinte illisible (hachage du jour) est conservée.</li>
+        profilée, pas de cookie publicitaire, pas d'adresse IP en clair. Pour qu'un avis
+        (d'accord, pas d'accord, jugement de l'arbitrage) ne compte qu'une fois, seule une
+        empreinte illisible est conservée — différente pour chaque idée, si bien que vos avis
+        sur plusieurs idées ne peuvent pas être reliés entre eux.</li>
         <li><strong>Vos droits&nbsp;:</strong> retirer votre consentement, faire supprimer ou
         rectifier une idée, récupérer son contenu — écrivez à
         <a href="mailto:contact@ratiopol.fr">contact@ratiopol.fr</a>, réponse sous
-        30 jours. La suppression retire l'idée et ses soutiens.</li>
+        30 jours. La suppression retire l'idée et ses avis.</li>
       </ul>
 
       <h2 id="licence">Licence des idées</h2>
@@ -954,7 +1079,8 @@ export function pageAdmin(vue: { idees: Idee[]; signalements: Signalement[] }, a
   <td><a href="/idee/${e(i.slug)}">${e(i.titre.slice(0, 60))}</a>${i.statut === 'masquee' ? ' <em>(masquée)</em>' : ''}</td>
   <td>${e(i.pseudo)}</td>
   <td>${e(themeParId(i.theme)?.nom ?? i.theme)}</td>
-  <td>${i.soutiens}</td>
+  <td>${i.avis.pour} / ${i.avis.contre} / ${i.avis.sansAvis}</td>
+  <td>${i.avis.arbComplet} / ${i.avis.arbPartiel} / ${i.avis.arbIncomplet}</td>
   <td style="display:flex;gap:var(--r-esp-2);flex-wrap:wrap">
     ${action}
     <form method="post" action="/admin/idee/${i.id}/supprimer"><button class="bouton bouton-secondaire">Supprimer</button></form>
@@ -976,7 +1102,7 @@ export function pageAdmin(vue: { idees: Idee[]; signalements: Signalement[] }, a
     <h2 style="margin-top:var(--r-esp-8)">Idées (${vue.idees.length})</h2>
     <table style="width:100%;border-collapse:collapse;font-size:var(--r-txt-sm);margin-top:var(--r-esp-4)">
       <thead><tr style="text-align:left;color:var(--r-encre-douce)">
-        <th>Idée</th><th>Pseudo</th><th>Thème</th><th>Soutiens</th><th>Actions</th>
+        <th>Idée</th><th>Pseudo</th><th>Thème</th><th>D’accord / pas / sans avis</th><th>Arbitrage complet / partiel / incomplet</th><th>Actions</th>
       </tr></thead>
       <tbody>${lignes}</tbody>
     </table>

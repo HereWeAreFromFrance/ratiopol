@@ -8,7 +8,7 @@
 ```
 navigateur ──HTML rendu serveur──┐
    │  (JS mininal : compteurs,   │
-   │   soutien async, secours     ▼
+   │   avis async, secours       ▼
    │   natif si JS échoue)   nginx (vhost, TLS, limit_req, /_vu)
    │                              │ 127.0.0.1:8090
    │                              ▼
@@ -32,9 +32,9 @@ affichent les mêmes bornes).
 
 ### `serveur/serveur.ts` — plomberie mince
 Boucle HTTP maison : routes GET (pages, statiques, sitemap, robots, /_vu,
-/sante) et POST (dépôt, soutien, signalement, admin). Les garde-fous :
+/sante) et POST (dépôt, avis, signalement, admin). Les garde-fous :
 corps plafonné à 64 Kio, limiteur de rythme par empreinte (dépôts 5/10 min,
-soutiens 20/min, signalements 10/h, connexions admin 10/h), champ-piège
+avis 30/min, signalements 10/h, connexions admin 10/h), champ-piège
 anti-robots, en-têtes de sécurité sur toute réponse. Le client peut demander
 du JSON (`Accept: application/json`) — sinon formulaires natifs et
 redirections 303 : le site marche sans JavaScript.
@@ -49,13 +49,13 @@ la main à chaque loi de finances (règles dans `docs/decisions.md`).
 
 ### `serveur/depot.ts` + `depot-memoire.ts` + `postgres.ts`
 Le serveur ne connaît que l'interface `Depot`. `DepotMemoire` pour les tests
-(règles métier identiques : un soutien par empreinte, tri, statut),
+(règles métier identiques : un avis par empreinte, tri, statut),
 `DepPg` pour la production — requêtes toutes paramétrées. Le schéma vit
 dans `base/migrations/` (pose par `npm run migrer`, idempotent).
 
 ### `web/` — le peu de navigateur
 `jetons.css` (design system `--r-*`), `page.css` (composants),
-`main.ts` (compteurs de caractères, soutien sans rechargement — avec
+`main.ts` (compteurs de caractères, avis sans rechargement — avec
 secours : si le fetch échoue, le formulaire natif reprend la main).
 
 ### `build.mjs` — deux bundles, un manifeste

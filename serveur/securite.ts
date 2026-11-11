@@ -3,7 +3,8 @@
 //  · EMPREINTE : on ne stocke JAMAIS d'adresse IP en clair (charte de
 //    minimisation, RGPD art. 9 — les opinions politiques sont sensibles).
 //    Chaque visiteur n'est connu que comme sha256(ip + jour + sel), pour
-//    dédupliquer les soutiens et doser le rythme — puis c'est oublié.
+//    doser le rythme — puis c'est oublié. Les avis sur une idée utilisent
+//    sha256(sel + idée + ip) : stable, mais propre à chaque idée.
 //  · MOT DE PASSE ADMIN : scrypt (node:crypto, zéro dépendance native —
 //    argon2 demanderait un module compilé, scrypt est dans la boîte et
 //    tient le coup contre une attaque hors ligne à ce niveau d'exposition).
@@ -24,7 +25,18 @@ export function echappe(s: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** L'empreinte du jour d'une IP : déduplique les soutiens sans identité. */
+/** L'empreinte d'une IP POUR UNE IDÉE, sans le jour : un avis par (idée,
+ *  adresse), modifiable, et qui ne se renouvelle pas chaque matin (l'ancienne
+ *  empreinte du jour laissait re-soutenir la même idée tous les jours).
+ *  Le slug entre dans le hachage : la même adresse donne une empreinte
+ *  différente sur chaque idée, on ne peut donc pas relier les avis d'une
+ *  personne entre eux ni reconstituer ses opinions (RGPD art. 9). */
+export function empreinteAvis(ip: string, sel: string, slug: string): string {
+  return createHash('sha256').update(`avis|${sel}|${slug}|${ip}`).digest('hex').slice(0, 32);
+}
+
+/** L'empreinte du jour d'une IP : dose le rythme et trace un dépôt (LCEN)
+ *  sans identité. */
 export function empreinteIp(ip: string, sel: string, aujourdhui = new Date()): string {
   const jour = aujourdhui.toISOString().slice(0, 10);
   return createHash('sha256').update(`${jour}|${sel}|${ip}`).digest('hex').slice(0, 32);

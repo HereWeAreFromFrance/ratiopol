@@ -164,3 +164,61 @@ figures (151,6 Md€ publiés ≠ −152,6 Md€ simulés, tous deux visibles).
 Pendant le glissement, le % suivi s'affiche sur le graphe à côté de la
 poignée (visible au focus, retiré au blur — piloté par CSS, pas par JS) ;
 le chiffre et l'unité, rien d'autre.
+
+## 2026-11-11 — Des données plus utiles à la décision
+
+Paul : « prendre plus de données pour permettre des décisions plus
+rationnelles ». Principe retenu : **plus de données sur les idées, pas sur
+les personnes** (RGPD art. 9). Trois chantiers validés par Paul.
+
+**1. Mesurer juste avant de mesurer plus.**
+- Le soutien était dédoublonné par `sha256(jour|sel|ip)` : la même personne
+  pouvait re-soutenir la même idée chaque jour. Les avis utilisent
+  désormais `sha256(avis|sel|slug|ip)` (`securite.empreinteAvis`) : **pas
+  de jour** (un avis par idée et par adresse, modifiable), et **le slug dans
+  le hachage** — l'empreinte change d'une idée à l'autre, on ne peut pas
+  relier les avis d'une même personne ni reconstituer ses opinions. Limite
+  assumée : une adresse partagée (foyer, bureau, CGNAT) ne compte qu'une
+  fois ; le décompte reste « indicatif ». L'empreinte du jour reste pour le
+  rythme et la trace LCEN du dépôt.
+- L'e-mail du formulaire était validé puis **jamais stocké** (la promesse
+  « être contacté » ne pouvait pas être tenue). Supprimé du formulaire, du
+  gabarit et de la base (colonne toujours NULL) : minimisation.
+- La recherche lit maintenant les six champs (bénéficiaires, arbitrage et
+  indicateur compris).
+
+**2. L'impact chiffré, optionnel (évolution du gabarit).** Trois champs :
+effet sur les finances publiques (coûte / rapporte / neutre), montant
+annuel estimé (k€, M€, Md€ ; plafond 2 000 Md€ = faute de frappe), poste
+budgétaire touché (liste `POSTES_CIBLES` tirée des Repères, avec des **ids
+stables** à ne jamais renommer à la mise à jour annuelle). **Optionnel** :
+la concrétude reste exigée par les cinq champs ; seule la **cohérence** est
+exigée (un montant dit s'il coûte ou rapporte). La page idée rapporte le
+montant au chiffre officiel du poste (« soit 5,0 % du montant de ce
+poste ») avec la source et le millésime du dénominateur, la mention
+« estimation de l'auteur, non vérifiée », aucun adjectif — les règles
+d'objectivité des Repères. Une idée non chiffrée le dit, sans plus.
+
+**3. Des avis plus riches qu'un « je soutiens ».** Deux questions
+**indépendantes** : sur le fond (d'accord / pas d'accord / sans avis) et
+sur l'arbitrage (exposé de façon complète / partielle / incomplète) — on
+peut juger un arbitrage honnête sans partager l'idée, c'est la mission du
+site. Aucune couleur de jugement (« pas d'accord » a l'allure de
+« d'accord »). Le bouton de l'avis déjà donné depuis cette adresse est
+enfoncé (`aria-pressed`) : on voit qu'on peut changer d'avis, sans compte
+ni cookie. Formulaires natifs sans JS ; `/soutien` reste une porte (pages
+en cache) qui vaut « d'accord ». Le tri « soutenues » devient « le plus de
+d'accord ».
+
+**Migration 002** : `soutiens` → `avis` (les soutiens existants deviennent
+des « d'accord » ; leur empreinte du jour n'étant pas reconnue par la
+nouvelle, un visiteur déjà venu pourra compter une fois de plus, une seule
+— accepté plutôt que de jeter des soutiens réels), colonnes d'impact,
+`email` supprimée. Éprouvée sur un PostgreSQL jetable avec des données
+001. Au passage, `DepotPg` est exporté du bundle : `test/pg.test.mjs`
+n'avait jamais pu tourner (« DepotPg is not a constructor »).
+
+**Écartés, notés une fois** : âge, CSP ou vote des contributeurs (fichier
+sensible pour une représentativité de toute façon illusoire) ; clusters
+d'opinion à la Pol.is, qui exigent de relier les votes d'une personne —
+pas avant le jeton anonyme vérifié et un avis juridique (doc 04 §3).
