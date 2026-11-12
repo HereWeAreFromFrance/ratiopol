@@ -444,3 +444,41 @@ brochure IR 2026).
 (0,07) au formateur de pourcent (« moins de 0,1 % » pour 7 %) ; la capture
 tapait dans le champ caché `revenu` du traducteur (même `name` que le
 champ du simulateur). Les deux corrigés, le taux moyen verrouillé par test.
+
+## 2026-11-12 (fin de journée) — « Craie & sarcelle » : nouvelle palette, et la longue durée en courbes
+
+Paul : « change les couleurs » (réponses : toute la palette, « surprends-moi »),
+puis « il faut que ce soit cohérent pour les couleurs et il faut mettre plus
+de graphiques avec plus de courbes ».
+
+**La nouvelle identité — « Craie & sarcelle »** : on quitte le beige chaud et
+le bleu profond pour un papier minéral froid (#f4f5f2), une encre vert-noir
+(#17211e) et un accent sarcelle (#0c6d63). Mêmes noms de jetons, deux jeux
+(clair/sombre) : la totalité du changement vit dans `jetons.css` (et le
+favicon dans build.mjs) — page.css ne touche aucune couleur, c'était le plan.
+
+**La COHÉRENCE est la règle, et elle est vérifiée par le script du skill
+dataviz, pas à l'œil** : les six séries (sarcelle, terre brûlée, violet, or
+sombre, rose, vert) passent les six contrôles sur leurs deux surfaces —
+pire paire CVD 9,9 (clair) / 9,7 (sombre), plancher vision normale 19,6 /
+18,7, bande de clarté, chroma ≥ 0,10, contraste ≥ 3:1 PARTOUT (l'ancienne
+palette avait des slots sous 3:1 tolérés par la règle de relief). Et **la
+couleur suit l'entité sur tout le site** : dépenses = série 1, recettes =
+série 2, dette = série 3, où qu'elles apparaissent ; l'État, les
+collectivités et la Sécurité sociale prennent 4, 5, 6 — dans la longue
+durée comme partout.
+
+**La longue durée — deux graphiques de plus, six courbes de plus**
+(/reperes) : la dette depuis 1978 en QUATRE courbes (totale, État,
+collectivités, Sécurité sociale — % PIB, tableau 3.101, prolongement
+exact de la série courte, testé) et les comptes depuis 1959 en deux
+courbes (dépenses/recettes en Md€ courants, tableau 3.201, extrémités
+rejoignant « L'essentiel », testées). Le générateur `courbeLongue` suit
+les mêmes règles que la courbe à cinq points — une seule échelle, jamais
+un chiffre par point : l'étiquette de valeur ne se pose qu'au DERNIER
+point de chaque série, alternativement au-dessus/en dessous. Les montants
+des comptes longs sont NOMINAUX : la note le dit, aucune correction de
+l'inflation.
+
+Un demi-siècle de comptes publics tient désormais sur une page, et chaque
+série — courte ou longue — garde sa couleur.

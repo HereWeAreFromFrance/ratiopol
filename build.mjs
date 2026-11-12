@@ -61,7 +61,7 @@ async function buildFront() {
   }
 
   // Le favicon (écrit ici : il n'a pas d'autre vie que statique).
-  const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#1d3a6e"/><text x="16" y="22" font-family="Georgia, serif" font-size="16" font-weight="bold" fill="#faf7f1" text-anchor="middle">R</text></svg>`;
+  const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#0c6d63"/><text x="16" y="22" font-family="Georgia, serif" font-size="16" font-weight="bold" fill="#f4f5f2" text-anchor="middle">R</text></svg>`;
   await writeFile(join(STATIQUE, 'favicon.svg'), favicon, 'utf8');
 
   await writeFile(join(DIST, 'manifeste.json'), JSON.stringify(manifeste, null, 2), 'utf8');

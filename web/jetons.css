@@ -95,68 +95,68 @@
   --r-donut-max: 34rem;     /* le camembert double anneau de l'accueil, en premier plan */
   --r-ecran-donut: 75rem;   /* breakpoint où le camembert prend sa colonne dédiée (il domine alors les curseurs) */
 
-  /* 6. COULEURS — thème clair (par défaut). Sobre : fond papier, encre,
-     UNE couleur d'accent. */
-  --r-papier: #faf7f1;        /* fond général, blanc cassé chaud */
+  /* 6. COULEURS — thème clair (par défaut). « Craie & sarcelle » : papier
+     minéral froid, encre vert-noir, UNE couleur d'accent sarcelle. */
+  --r-papier: #f4f5f2;        /* fond général, craie légèrement verte */
   --r-papier-carte: #ffffff;  /* fond des cartes */
-  --r-papier-creux: #f1ece2;  /* fond des blocs en creux (champs, citations) */
-  --r-filet: #ddd5c5;         /* filets de séparation */
-  --r-filet-fort: #b8ad97;
-  --r-encre: #201d18;         /* texte principal */
-  --r-encre-douce: #5c564a;   /* texte secondaire, méta */
-  --r-encre-legere: #8a8271;  /* horodatage, légendes */
-  --r-accent: #1d3a6e;        /* bleu profond — liens, actions */
-  --r-accent-fonce: #152a4f;
-  --r-accent-doux: #e7ecf5;   /* fond d'accent (sélection, badge) */
-  --r-succes: #2c5e37;
-  --r-erreur: #8c2b22;
-  --r-erreur-doux: #f7e5e2;
-  --r-ombre-carte: 0 1px 2px rgba(32, 29, 24, 0.05), 0 4px 16px rgba(32, 29, 24, 0.06);
+  --r-papier-creux: #e9ebe6;  /* fond des blocs en creux (champs, citations) */
+  --r-filet: #d3d7d0;         /* filets de séparation */
+  --r-filet-fort: #a9b0a8;
+  --r-encre: #17211e;         /* texte principal */
+  --r-encre-douce: #515e59;   /* texte secondaire, méta */
+  --r-encre-legere: #82908a;  /* horodatage, légendes */
+  --r-accent: #0c6d63;        /* sarcelle profonde — liens, actions */
+  --r-accent-fonce: #084d45;
+  --r-accent-doux: #deede9;   /* fond d'accent (sélection, badge) */
+  --r-succes: #2f6b3c;
+  --r-erreur: #9c3326;
+  --r-erreur-doux: #f6e5e1;
+  --r-ombre-carte: 0 1px 2px rgba(23, 33, 30, 0.05), 0 4px 16px rgba(23, 33, 30, 0.06);
 
-  /* 7. SÉRIES DE GRAPHIQUES (repères) — palette catégorielle validée par le
-     script du skill dataviz sur la surface claire #faf7f1 : CVD, luminosité,
-     chroma, contraste (quatre slots sous 3:1 → règle de relief : chaque
-     part est étiquetée en texte dans la légende, jamais la couleur seule).
-     L'ORDRE des slots est le mécanisme anti-confusion daltonienne : ne
-     jamais le réordonner ni le recycler. */
-  --r-serie-1: #2a78d6; /* bleu — dépenses (courbe), 1er poste (camembert) */
-  --r-serie-2: #eb6834; /* orange — recettes (courbe), 2e poste */
-  --r-serie-3: #1baf7a;
-  --r-serie-4: #eda100;
-  --r-serie-5: #e87ba4;
-  --r-serie-6: #008300;
-  --r-serie-neutre: #b8ad97; /* le « reste » du camembert : postes au-delà du 6e */
+  /* 7. SÉRIES DE GRAPHIQUES (repères) — palette catégorielle « craie &
+     sarcelle », validée par le script du skill dataviz sur la surface
+     claire #f4f5f2 (pire paire CVD 9,9 ; plancher vision normale 19,6 ;
+     contraste ≥ 3:1 partout). L'ORDRE des slots est le mécanisme
+     anti-confusion daltonienne : ne jamais le réordonner ni le recycler. */
+  --r-serie-1: #0a9080; /* sarcelle — dépenses (courbe), 1er poste (camembert) */
+  --r-serie-2: #e05d38; /* terre brûlée — recettes (courbe), 2e poste */
+  --r-serie-3: #6d5bd0; /* violet — dette (courbe) */
+  --r-serie-4: #a97a0c; /* or sombre — 4e poste, dette de l'État (longue) */
+  --r-serie-5: #c2538a; /* rose — 5e poste, dette des collectivités (longue) */
+  --r-serie-6: #3f7d20; /* vert — 6e poste, dette de la Sécu (longue) */
+  --r-serie-neutre: #a9b0a8; /* le « reste » du camembert : postes au-delà du 6e */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --r-papier: #17161a;
-    --r-papier-carte: #1f1e23;
-    --r-papier-creux: #26252b;
-    --r-filet: #38363e;
-    --r-filet-fort: #55515c;
-    --r-encre: #e8e4da;
-    --r-encre-douce: #b3ada0;
-    --r-encre-legere: #8a8478;
-    --r-accent: #9fb8e8;
-    --r-accent-fonce: #c3d3f2;
-    --r-accent-doux: #232c3e;
+    --r-papier: #131715;
+    --r-papier-carte: #1a1f1d;
+    --r-papier-creux: #212724;
+    --r-filet: #333b37;
+    --r-filet-fort: #4e5752;
+    --r-encre: #e6e9e4;
+    --r-encre-douce: #b2bab4;
+    --r-encre-legere: #87958e;
+    --r-accent: #5cc4b6;
+    --r-accent-fonce: #8ad9cd;
+    --r-accent-doux: #1c2f2b;
     --r-succes: #8fc79b;
     --r-erreur: #e79a90;
-    --r-erreur-doux: #3a2420;
+    --r-erreur-doux: #362019;
     --r-ombre-carte: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.3);
 
-    /* 7. SÉRIES DE GRAPHIQUES (repères) — palette catégorielle validée par le
-       script du skill dataviz sur la surface sombre #17161a : CVD, luminosité,
-       chroma, contraste. L'ORDRE des slots est le mécanisme anti-confusion
-       daltonienne : ne jamais le réordonner ni le recycler. */
-    --r-serie-1: #3987e5; /* bleu — dépenses (courbe), 1er poste (camembert) */
-    --r-serie-2: #d95926; /* orange — recettes (courbe), 2e poste */
-    --r-serie-3: #199e70;
-    --r-serie-4: #c98500;
-    --r-serie-5: #d55181;
-    --r-serie-6: #008300;
-    --r-serie-neutre: #55515c; /* le « reste » du camembert : postes au-delà du 6e */
+    /* 7. SÉRIES DE GRAPHIQUES (repères) — palette sombre validée par le
+       script du skill dataviz sur la surface #131715 (pire paire CVD 9,7 ;
+       plancher vision normale 18,7 ; bande de clarté 0,48-0,67). L'ORDRE
+       des slots est le mécanisme anti-confusion daltonienne : ne jamais le
+       réordonner ni le recycler. */
+    --r-serie-1: #26a396; /* sarcelle — dépenses (courbe), 1er poste (camembert) */
+    --r-serie-2: #d96a3c; /* terre brûlée — recettes (courbe), 2e poste */
+    --r-serie-3: #887ce6; /* violet — dette (courbe) */
+    --r-serie-4: #b5862a; /* or sombre — 4e poste, dette de l'État (longue) */
+    --r-serie-5: #cf6397; /* rose — 5e poste, dette des collectivités (longue) */
+    --r-serie-6: #639c44; /* vert — 6e poste, dette de la Sécu (longue) */
+    --r-serie-neutre: #4e5752; /* le « reste » du camembert : postes au-delà du 6e */
   }
 }
 

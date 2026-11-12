@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, RECETTES_APU, eurosTexte, BAREME_IR, calculeIr, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, COMPTES_LONGS, DETTE_LONGUE, FINANCES_PUBLIQUES, POPULATION, RECETTES_APU, eurosTexte, BAREME_IR, calculeIr, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -649,6 +649,21 @@ test('les repères budgétaires restent cohérents', () => {
   assert.equal(calculeIr(200000, 'celibataire').decote, 0);
   assert.equal(BAREME_IR.tranches.length, 5);
 
+  // La longue durée : séries de longueurs égales, valeurs plausibles, et
+  // les extrémités coïncident avec les séries courtes (même source) — la
+  // règle « la courbe trace les montants, elle ne les remplace pas ».
+  for (const cle of ['totale', 'etat', 'locales', 'securite']) {
+    assert.equal(DETTE_LONGUE[cle].length, DETTE_LONGUE.années.length, `dette longue ${cle}`);
+  }
+  assert.equal(DETTE_LONGUE.totale.at(-1), ÉVOLUTION.dettePib.at(-1), 'la dette longue ne rejoint pas la série courte');
+  assert.equal(DETTE_LONGUE.années.length, 2025 - 1978 + 1);
+  for (const cle of ['dépenses', 'recettes']) {
+    assert.equal(COMPTES_LONGS[cle].length, COMPTES_LONGS.années.length, `comptes longs ${cle}`);
+    assert.ok(COMPTES_LONGS[cle].every((v) => v > 0 && v < 2000), `comptes longs ${cle} : valeur incohérente`);
+  }
+  assert.ok(Math.abs(COMPTES_LONGS.dépenses.at(-1) - fp.dépensesMds) < 0.15);
+  assert.ok(Math.abs(COMPTES_LONGS.recettes.at(-1) - fp.recettesMds) < 0.15);
+
   // Chaque poste mène vers un thème existant — et aucun poste ne reste sans
   // thème (les lignes de méthode, hors Poste, ne sont pas concernées).
   const postes = [...be.depenses, be.autresDepenses, ...be.recettesFiscales, ...fp.sousSecteurs];
@@ -878,6 +893,14 @@ test('la page Repères : dette en courbe, argent public en camembert, impôt en 
   try {
     const page = await requete(port, 'GET', '/reperes');
     assert.equal(page.status, 200);
+    // La longue durée : quatre courbes de dette, deux de comptes, séries
+    // 4-6 de la palette (la couleur suit l'entité sur tout le site).
+    assert.match(page.corps, /Longue durée — la dette depuis 1978/);
+    assert.match(page.corps, /Longue durée — les comptes depuis 1959/);
+    assert.match(page.corps, /rcv-s4-trait/);
+    assert.match(page.corps, /Sécurité sociale/);
+    assert.match((await requete(port, 'GET', '/graphiques.css')).corps, /\.rcv-s5 \{ fill: var\(--r-serie-5\)/);
+
     // La courbe de dette : série 3, chaque point étiqueté, échelle propre.
     assert.match(page.corps, /rcv-dt-trait/);
     assert.match(page.corps, /Dette publique/);

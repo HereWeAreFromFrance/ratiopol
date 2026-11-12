@@ -12,7 +12,7 @@ import type { Erreurs, ValeursBrutes } from './gabarit';
 import { BORNES, EFFETS, UNITES, slugDepuisTitre } from './gabarit';
 import { COMMENT_AGIR, ficheDe, type Competence, type Fiche } from './fiches';
 import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
-import { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, POSTES_CIBLES, RECETTES_APU, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
+import { BUDGET_ETAT, COMPTES_LONGS, DETTE_LONGUE, FINANCES_PUBLIQUES, POPULATION, POSTES_CIBLES, RECETTES_APU, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
 import { ANNEAU, CURSEURS, calculeBudget, cheminsAnneau, deltaTexte, eurosDeltaTexte, eurosTexte, mdsTexte, parHabitant, partTexteMds, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
 import { BAREME_IR, calculeIr, type Foyer } from './impot';
 import { echappe } from './securite';
@@ -535,6 +535,14 @@ export function feuilleGraphiques(): string {
   règles.push('.rcv-dt-trait { stroke: var(--r-serie-3); }');
   règles.push('.rcv-dt { fill: var(--r-serie-3); }');
   règles.push('.rcc-courbe-dt { background: var(--r-serie-3); }');
+  // Les séries 4 à 6 : longue durée de la dette par sous-secteur. La
+  // couleur suit l'ENTITÉ sur tout le site (dépenses = 1, recettes = 2,
+  // dette = 3 ; l'État, les collectivités et la Sécu prennent 4, 5, 6).
+  for (const n of [4, 5, 6]) {
+    règles.push(`.rcv-s${n}-trait { stroke: var(--r-serie-${n}); }`);
+    règles.push(`.rcv-s${n} { fill: var(--r-serie-${n}); }`);
+    règles.push(`.rcc-courbe-s${n} { background: var(--r-serie-${n}); }`);
+  }
   // Les pastilles de la légende de la courbe : classes DÉDIÉES, alignées sur
   // les traits ci-dessus. Ne pas réutiliser rcc-d0/rcc-r0 (classes des
   // camemberts, où le 1er poste des recettes prend aussi la série 1) :
@@ -967,6 +975,57 @@ ${sectionImpot}
   </section>
 
   <section class="section">
+    <div class="section-titre"><h2>Longue durée — la dette depuis ${DETTE_LONGUE.années[0]}</h2></div>
+    <p class="reperes-note">La dette publique et sa répartition, en pourcent du PIB au 31/12 de
+    chaque année — le prolongement vers le passé de la courbe ci-dessus, même tableau 3.101.</p>
+    <div class="reperes-courbe-legend">
+      <span><span class="reperes-point rcc-courbe-dt"></span> Dette totale</span>
+      <span><span class="reperes-point rcc-courbe-s4"></span> État</span>
+      <span><span class="reperes-point rcc-courbe-s5"></span> Collectivités</span>
+      <span><span class="reperes-point rcc-courbe-s6"></span> Sécurité sociale</span>
+    </div>
+    ${courbeLongue(
+      DETTE_LONGUE.années,
+      [
+        { nom: 'Dette totale', valeurs: DETTE_LONGUE.totale, trait: 'rcv-dt-trait', point: 'rcv-dt', auDessus: true },
+        { nom: 'État', valeurs: DETTE_LONGUE.etat, trait: 'rcv-s4-trait', point: 'rcv-s4', auDessus: false },
+        { nom: 'Collectivités', valeurs: DETTE_LONGUE.locales, trait: 'rcv-s5-trait', point: 'rcv-s5', auDessus: true },
+        { nom: 'Sécurité sociale', valeurs: DETTE_LONGUE.securite, trait: 'rcv-s6-trait', point: 'rcv-s6', auDessus: false },
+      ],
+      [0, 30, 60, 90, 120],
+      [1980, 1990, 2000, 2010, 2020]
+    )}
+    <p class="reperes-note">Les trois sous-secteurs ne s'additionnent pas exactement à la
+    totale&nbsp;: les ODAC (2,3 points de PIB en 2025) ne sont pas tracés. La dette de la
+    Sécurité sociale seule reste modeste — l'essentiel de la dette est celle de l'État.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-titre"><h2>Longue durée — les comptes depuis ${COMPTES_LONGS.années[0]}</h2></div>
+    <p class="reperes-note">Dépenses et recettes de toutes les administrations publiques, en
+    milliards d'euros COURANTS (tableau 3.201) — l'échelle de l'État-providence. Montants
+    nominaux&nbsp;: aucune correction de l'inflation, un franc ou un euro de 1960 ne vaut pas
+    un euro de 2025.</p>
+    <div class="reperes-courbe-legend">
+      <span><span class="reperes-point rcc-courbe-d"></span> Dépenses publiques</span>
+      <span><span class="reperes-point rcc-courbe-r"></span> Recettes publiques</span>
+    </div>
+    ${courbeLongue(
+      COMPTES_LONGS.années,
+      [
+        { nom: 'Dépenses publiques', valeurs: COMPTES_LONGS.dépenses, trait: 'rcv-d-trait', point: 'rcv-d', auDessus: true },
+        { nom: 'Recettes publiques', valeurs: COMPTES_LONGS.recettes, trait: 'rcv-r-trait', point: 'rcv-r', auDessus: false },
+      ],
+      [0, 500, 1000, 1500, 2000],
+      [1960, 1980, 2000, 2020],
+      true
+    )}
+    <p class="reperes-note">L'écart entre les deux courbes, chaque année, est le déficit —
+    il s'accumule en dette. Les montants nominaux invitent au long terme&nbsp;: les comparer
+    en pourcent du PIB se lit sur les courbes ci-dessus.</p>
+  </section>
+
+  <section class="section">
     <div class="section-titre"><h2>Sources</h2></div>
     <ul class="liste-simple">
       ${SOURCES_REPERES.map((s) => `<li><a href="${e(s.url)}">${e(s.nom)}</a></li>`).join('\n')}
@@ -1039,6 +1098,74 @@ function lignesBudget(selection: Curseur[], variations: Variations): string {
       return ligneBudget(c, cl.barre, cl.point, variations[c.id] ?? 0);
     })
     .join('\n');
+}
+
+/** Une courbe longue durée : plusieurs décennies, plusieurs séries.
+ *  Mêmes règles que courbeÉvolution (SVG inline, une seule échelle, axes
+ *  discrets) mais un point par an serait illisible : traits fins, années
+ *  étiquetées aux jalons, et l'étiquette de valeur SÉLECTIVE au dernier
+ *  point de chaque série (jamais un chiffre par point). La couleur suit
+ *  l'entité — classes dédiées de /graphiques.css. */
+interface SérieLongue {
+  nom: string;
+  valeurs: number[];
+  /** Classe du trait (stroke) et du point (fill). */
+  trait: string;
+  point: string;
+  /** L'étiquette de fin se pose au-dessus ou en dessous du point. */
+  auDessus: boolean;
+}
+
+function courbeLongue(années: number[], séries: SérieLongue[], grille: number[], jalons: number[], enEntiers = false): string {
+  const gauche = 56;
+  const droite = 584;
+  const haut = 24;
+  const bas = 304;
+  const min = grille[0]!;
+  const max = grille[grille.length - 1]!;
+  const fmt = enEntiers ? formatteurEntier : formatteurMds;
+  const yDe = (v: number) => bas - ((v - min) / (max - min)) * (bas - haut);
+  const xDe = (i: number) => gauche + (i * (droite - gauche)) / (années.length - 1);
+  const traits = séries
+    .map(
+      (s) => `<polyline class="${s.trait}" fill="none" stroke-width="2" points="${s.valeurs
+        .map((v, i) => `${xDe(i).toFixed(1)},${yDe(v).toFixed(1)}`)
+        .join(' ')}"/>`
+    )
+    .join('\n  ');
+  // Le dernier point de chaque série : marque + étiquette de valeur.
+  const fins = séries
+    .map((s) => {
+      const i = s.valeurs.length - 1;
+      const x = xDe(i);
+      const y = yDe(s.valeurs[i]!);
+      return `<circle class="${s.point}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"/>
+    <text class="reperes-courbe-etiquette" x="${(x - 10).toFixed(1)}" y="${(y + (s.auDessus ? -10 : 20)).toFixed(1)}" text-anchor="end">${fmt.format(s.valeurs[i]!)}</text>`;
+    })
+    .join('\n  ');
+  const lignesGrille = grille
+    .map((v) => {
+      const y = yDe(v);
+      return `<line class="reperes-courbe-grille" x1="${gauche}" y1="${y.toFixed(1)}" x2="${droite}" y2="${y.toFixed(1)}"/>
+    <text class="reperes-courbe-axe" x="${gauche - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end">${fmt.format(v)}</text>`;
+    })
+    .join('\n  ');
+  const ans = années
+    .map((a, i) =>
+      jalons.includes(a) ? `<text class="reperes-courbe-axe" x="${xDe(i).toFixed(1)}" y="328" text-anchor="middle">${a}</text>` : ''
+    )
+    .filter(Boolean)
+    .join('\n  ');
+  const résumé = séries
+    .map((s) => `${s.nom} de ${fmt.format(s.valeurs[0]!)} à ${fmt.format(s.valeurs[s.valeurs.length - 1]!)}`)
+    .join(' ; ');
+  return `<svg class="reperes-courbe" viewBox="0 0 640 340" role="img"
+     aria-label="${e(résumé)}, de ${années[0]} à ${années[années.length - 1]}">
+  ${lignesGrille}
+  ${traits}
+  ${fins}
+  ${ans}
+</svg>`;
 }
 
 /** Les indicateurs de la bande, partagés par /budget et l'accueil : le
