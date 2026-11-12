@@ -24,7 +24,7 @@ aucun démarchage, un très bon outil gratuit — cf. `docs/decisions.md`.
 
 ```sh
 npm run build     # esbuild : front + serveur → dist/
-npm test          # build + node --test (27 tests, ~1 s)
+npm test          # build + node --test (28 tests, ~1 s)
 npm run migrer    # pose base/migrations/ (RP_PG_URL requis)
 node deploiement/deployer.mjs          # déploie (git propre + poussé requis)
 node deploiement/deployer.mjs --retour # retour arrière

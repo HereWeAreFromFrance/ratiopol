@@ -92,6 +92,8 @@
   --r-came-max-large: 24rem; /* disque camembert au palier grand écran */
   --r-came-bloc-max: 110rem; /* bloc disque + légende (la légende ne s'étire pas sur tout l'écran) */
   --r-courbe-max: 88rem;    /* largeur maximale du SVG courbe (au-delà il devient plus haut que le texte autour) */
+  --r-donut-max: 34rem;     /* le camembert double anneau de l'accueil, en premier plan */
+  --r-ecran-donut: 75rem;   /* breakpoint où le camembert prend sa colonne dédiée (il domine alors les curseurs) */
 
   /* 6. COULEURS — thème clair (par défaut). Sobre : fond papier, encre,
      UNE couleur d'accent. */

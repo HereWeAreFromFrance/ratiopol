@@ -13,7 +13,7 @@ import { BORNES, EFFETS, UNITES, slugDepuisTitre } from './gabarit';
 import { COMMENT_AGIR, ficheDe, type Competence, type Fiche } from './fiches';
 import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
 import { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
-import { ANNEAU, CURSEURS, calculeBudget, cheminsAnneau, deltaTexte, eurosDeltaTexte, eurosTexte, mdsTexte, parHabitant, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
+import { ANNEAU, CURSEURS, calculeBudget, cheminsAnneau, deltaTexte, eurosDeltaTexte, eurosTexte, mdsTexte, parHabitant, partTexteMds, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -158,14 +158,35 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
       <a class="bouton bouton-secondaire" href="/themes">Parcourir par thème</a>
     </div>
   </section>
-  <section class="section accueil-themes" aria-labelledby="accueil-themes-titre">
-    <div class="section-titre"><h2 id="accueil-themes-titre">Les grands thèmes</h2><a href="/themes">Tous les thèmes et leurs sujets →</a></div>
-    <div class="accueil-themes-grille">${FAMILLES.map((f) => `
-      <div class="accueil-famille">
-        <h3>${e(f.nom)}</h3>
-        <ul>${themesDe(f.id).map((t) => `<li><a href="/theme/${e(t.id)}" title="${e(t.accroche)}">${e(t.nom)}</a></li>`).join('')}</ul>
-      </div>`).join('')}
-    </div>
+  <section class="section accueil-budget">
+    ${sectionTitre('Le budget de l’État, à vous de jouer', { href: '/budget', texte: 'Les vingt curseurs' })}
+    <form class="bud-formulaire" method="get" action="/budget" data-budget data-solde="${BUDGET_ETAT.soldeMds}">
+      <div class="accueil-budget-grille">
+        <div class="bud-donut-bloc">${donutBudget({})}</div>
+        <div>
+          <div class="reperes-sim-resultats reperes-sim-resultats-compact">
+            ${bandeBudget(calculeBudget({}))}
+          </div>
+          <fieldset class="bud-groupe bud-groupe-compact">
+            <legend>Dépenses — les plus grosses missions</legend>
+            <div class="bud-colonnes">${lignesBudget(CURSEURS.filter((c) => c.sens === 'dep').slice(0, 6), {})}</div>
+          </fieldset>
+          <fieldset class="bud-groupe bud-groupe-compact">
+            <legend>Recettes — les trois grands impôts</legend>
+            <div class="bud-colonnes">${lignesBudget(CURSEURS.filter((c) => c.sens === 'rec').slice(0, 3), {})}</div>
+          </fieldset>
+          <div class="bud-actions">
+            <button class="bouton bouton-secondaire bud-recalculer" type="submit">Recalculer</button>
+            <a href="/budget">Les vingt curseurs du budget&nbsp;→</a>
+          </div>
+        </div>
+      </div>
+    </form>
+    <p class="reperes-note">Six missions et trois impôts ici, chaque poste de la loi sur la page
+    <a href="/budget">Votre budget</a>. Le camembert se recompose et chaque indicateur bouge&nbsp;;
+    l'écart par habitant divise par la population officielle (${formatteurEntier.format(POPULATION.habitants)}
+    habitants au ${POPULATION.date}, Insee). Arithmétique pure, aucun effet économique modélisé
+    — pas une prévision.</p>
   </section>
   <section class="section accueil-france">
     ${sectionTitre('La France en chiffres', { href: '/reperes', texte: 'Tous les repères' })}
@@ -199,36 +220,6 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
       population au ${POPULATION.date} (Insee, bilan démographique 2025).</p>
     </div>
   </section>
-  <section class="section accueil-budget">
-    ${sectionTitre('Le budget de l’État, à vous de jouer', { href: '/budget', texte: 'Les vingt curseurs' })}
-    <form class="bud-formulaire" method="get" action="/budget" data-budget data-solde="${BUDGET_ETAT.soldeMds}">
-      <div class="accueil-budget-grille">
-        <div class="bud-donut-bloc">${donutBudget({})}</div>
-        <div>
-          <div class="reperes-sim-resultats reperes-sim-resultats-compact">
-            ${bandeBudget(calculeBudget({}))}
-          </div>
-          <fieldset class="bud-groupe bud-groupe-compact">
-            <legend>Dépenses — les plus grosses missions</legend>
-            <div class="bud-colonnes">${lignesBudget(CURSEURS.filter((c) => c.sens === 'dep').slice(0, 6), {})}</div>
-          </fieldset>
-          <fieldset class="bud-groupe bud-groupe-compact">
-            <legend>Recettes — les trois grands impôts</legend>
-            <div class="bud-colonnes">${lignesBudget(CURSEURS.filter((c) => c.sens === 'rec').slice(0, 3), {})}</div>
-          </fieldset>
-          <div class="bud-actions">
-            <button class="bouton bouton-secondaire bud-recalculer" type="submit">Recalculer</button>
-            <a href="/budget">Les vingt curseurs du budget&nbsp;→</a>
-          </div>
-        </div>
-      </div>
-    </form>
-    <p class="reperes-note">Six missions et trois impôts ici, chaque poste de la loi sur la page
-    <a href="/budget">Votre budget</a>. Le camembert se recompose et chaque indicateur bouge&nbsp;;
-    l'écart par habitant divise par la population officielle (${formatteurEntier.format(POPULATION.habitants)}
-    habitants au ${POPULATION.date}, Insee). Arithmétique pure, aucun effet économique modélisé
-    — pas une prévision.</p>
-  </section>
   <section class="section">
     ${sectionTitre('Le plus de « d’accord »', { href: '/themes', texte: 'Tous les thèmes' })}
     ${grille(soutenues)}
@@ -236,6 +227,15 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
   <section class="section">
     ${sectionTitre('Dernières idées')}
     ${grille(recentes)}
+  </section>
+  <section class="section accueil-themes" aria-labelledby="accueil-themes-titre">
+    <div class="section-titre"><h2 id="accueil-themes-titre">Les grands thèmes</h2><a href="/themes">Tous les thèmes et leurs sujets →</a></div>
+    <div class="accueil-themes-grille">${FAMILLES.map((f) => `
+      <div class="accueil-famille">
+        <h3>${e(f.nom)}</h3>
+        <ul>${themesDe(f.id).map((t) => `<li><a href="/theme/${e(t.id)}" title="${e(t.accroche)}">${e(t.nom)}</a></li>`).join('')}</ul>
+      </div>`).join('')}
+    </div>
   </section>
 </div>`;
   return squelette({
@@ -700,11 +700,37 @@ function ongletsVue(vue: 'barres' | 'camembert'): string {
 </div>`;
 }
 
-export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barres'): string {
+export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barres', montant = 1): string {
   const be = BUDGET_ETAT;
   const fp = FINANCES_PUBLIQUES;
   const ev = ÉVOLUTION;
   const depensesListe = [...be.depenses, be.autresDepenses];
+  /** Le traducteur de montants : un chiffre public tapé par le visiteur,
+   *  traduit par des divisions pures (population, dépenses, dette) —
+   *  « et pour vous, ça fait combien ? ». Sans JavaScript, le GET
+   *  re-rend le calcul ; avec (web/grandeur.ts), il est continu. */
+  const sectionGrandeurs = `
+  <section class="section">
+    <div class="section-titre"><h2>Et pour vous, ça fait combien&nbsp;?</h2></div>
+    <form class="grandeur-formulaire" method="get" action="/reperes" data-grandeur
+          data-pop="${POPULATION.habitants}" data-depenses="${fp.dépensesMds}" data-dette="${fp.detteMds}">
+      <input type="hidden" name="vue" value="${vue}">
+      <label class="grandeur-libelle" for="grandeur-montant">Un montant public, en milliards d'euros</label>
+      <input class="grandeur-champ" type="number" id="grandeur-montant" name="montant"
+             min="0" max="5000" step="0.1" value="${montant}" inputmode="decimal">
+      <button class="bouton bouton-secondaire grandeur-recalculer" type="submit">Traduire</button>
+    </form>
+    <div class="reperes-sim-resultats">
+      <span><strong data-gr-montant>${mdsTexte(montant)}</strong></span>
+      <span>par habitant et par an&nbsp;: <strong data-gr-hab>${eurosTexte(parHabitant(montant))}</strong></span>
+      <span>part des dépenses publiques&nbsp;: <strong data-gr-dep>${partTexteMds(montant, fp.dépensesMds)}</strong></span>
+      <span>part de la dette publique&nbsp;: <strong data-gr-dette>${partTexteMds(montant, fp.detteMds)}</strong></span>
+    </div>
+    <p class="reperes-note">Des divisions, rien d'autre&nbsp;: le montant que vous tapez, ÷ la population
+    (${POPULATION.date}, Insee), ÷ les dépenses publiques et la dette publiées (${fp.année}). Aucun
+    commentaire — l'ordre de grandeur est à vous.</p>
+  </section>
+`;
   const contenu = `
 <div class="conteneur">
   <section class="section">
@@ -725,6 +751,7 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     ensemble&nbsp;: la Sécurité sociale et les collectivités dépensent davantage que lui.</p>
     ${ongletsVue(vue)}
   </section>
+${sectionGrandeurs}
 
   <section class="section">
     <div class="section-titre"><h2>Budget de l’État — dépenses (${be.année})</h2></div>
@@ -907,8 +934,15 @@ function donutBudget(variations: Variations): string {
   const anneau = (postes: (Poste & { id: string })[], classe: string, groupe: 'dep' | 'rec'): string => {
     const valeurs = postes.map((p) => p.mds * (1 + (variations[p.id] ?? 0) / 100));
     const chemins = cheminsAnneau(valeurs, ANNEAU[groupe]);
+    // Chaque part mène au thème de son poste — le camembert est une
+    // navigation, pas une décoration.
+    const segment = (p: Poste & { id: string }, i: number): string => {
+      const path = `<path class="${classe}${i}" data-id="${p.id}" data-mds="${p.mds}" d="${chemins[i]}"/>`;
+      const idTheme = posteThemeParId(p.id);
+      return idTheme ? `<a href="/theme/${e(idTheme)}" aria-label="${e(p.nom)} — voir le thème">${path}</a>` : path;
+    };
     return `    <g data-anneau="${groupe}">
-${postes.map((p, i) => `      <path class="${classe}${i}" data-id="${p.id}" data-mds="${p.mds}" d="${chemins[i]}"/>`).join('\n')}
+${postes.map(segment).join('\n')}
     </g>`;
   };
   return `<svg class="bud-donut" viewBox="0 0 320 320" data-donut="1" role="img"

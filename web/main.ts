@@ -12,12 +12,15 @@
 //    pure sur des données rendues en attributs par le serveur ;
 //  · le simulateur poste par poste sur /budget (budget.ts) : un curseur
 //    par mission et par grande recette, solde recalculé en direct — même
-//    règle, le module pur de l'arithmétique est partagé avec le serveur.
+//    règle, le module pur de l'arithmétique est partagé avec le serveur ;
+//  · le traducteur de montants sur /reperes (grandeur.ts) : un montant
+//    tapé, traduit en euros par habitant et en parts des totaux publiés.
 // Zéro framework, zéro dépendance, un seul fichier bundlé par build.mjs.
 
 import { annoncerVisites } from './visites.ts';
 import { poseSimulateur } from './simulateur.ts';
 import { poseBudget } from './budget.ts';
+import { poseGrandeurs } from './grandeur.ts';
 
 const BORNES: Record<string, [number, number]> = {
   titre: [12, 140],
@@ -91,4 +94,5 @@ poseCompteurs();
 poseAvis();
 poseSimulateur();
 poseBudget();
+poseGrandeurs();
 annoncerVisites();

@@ -523,6 +523,42 @@ await donutSeul.screenshot({ path: 'captures/budget-donut-sombre.png' });
 console.log('capture budget-donut-sombre');
 await pageBudDonut.close();
 
+// Le traducteur de montants (/reperes) : sans JavaScript (GET ?montant=10,
+// le serveur rend le calcul) puis avec — le champ tape « 25 », la bande
+// doit suivre en direct, le bouton disparaît.
+const pageGr = await navigateur.newPage();
+await pageGr.setViewport({ width: 1440, height: 900 });
+await pageGr.goto(base + '/reperes?montant=10', { waitUntil: 'networkidle0' });
+const sectionGr = await pageGr.$('form[data-grandeur]');
+await sectionGr.screenshot({ path: 'captures/reperes-grandeur-sans-js.png' });
+console.log('capture reperes-grandeur-sans-js');
+await pageGr.close();
+
+const pageGrJs = await navigateur.newPage();
+await pageGrJs.setViewport({ width: 1440, height: 900 });
+await pageGrJs.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+const champ = await pageGrJs.$('input[name="montant"]');
+// Le champ vient prérempli (1 Md€) : on vide par le DOM (les inputs
+// number ignoring la sélection au triple-clic), puis on tape.
+await champ.evaluate((c) => {
+  c.value = '';
+});
+await champ.type('25');
+const luGr = await pageGrJs.evaluate(() =>
+  Object.fromEntries(
+    ['montant', 'hab', 'dep', 'dette'].map((nom) => [
+      nom,
+      document.querySelector(`[data-gr-${nom}]`)?.textContent ?? 'absent',
+    ]),
+  ),
+);
+console.log('traducteur 25 Md€ :', JSON.stringify(luGr));
+const boutonCacheGr = await pageGrJs.$eval('.grandeur-recalculer', (b) => getComputedStyle(b).display === 'none');
+if (!boutonCacheGr) throw new Error('le bouton Traduire doit disparaître une fois le JS posé');
+await (await pageGrJs.$('form[data-grandeur]')).screenshot({ path: 'captures/reperes-grandeur-live.png' });
+console.log('capture reperes-grandeur-live');
+await pageGrJs.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);

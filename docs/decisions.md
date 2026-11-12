@@ -377,3 +377,27 @@ directement les impacts d'une politique budgétaire sur les Français. »
   serveur (premier tracé) et navigateur (recomposition) : les deux dessins
   coïncident par construction, vérifié par capture (le path change quand
   le curseur bouge, la bande suit).
+
+**Complément (même jour) — le camembert en premier plan, les thèmes en bas,
+et toujours plus d'interactions faciles.** Paul : « le camembert plus gros
+et en premier plan, les thèmes en bas » puis « ajouter d'autres effets sur
+d'autres sujets, un maximum d'interactions faciles à comprendre ».
+
+- **L'ordre de l'accueil** : héros → « Le budget de l'État, à vous de
+  jouer » → « La France en chiffres » → idées → les grands thèmes tout en
+  bas. Le camembert double anneau passe à 34rem (jeton `--r-donut-max`)
+  et prend sa colonne dédiée dès 75rem (jeton `--r-ecran-donut`) : il
+  domine sans écraser les curseurs.
+- **Chaque part du camembert est cliquable** vers le thème de son poste
+  (le filet s'épaissit au survol — l'affordance ne passe jamais par la
+  couleur seule) : le camembert est une navigation, pas une décoration.
+- **Le traducteur de montants** sur /reperes — « Et pour vous, ça fait
+  combien ? » : le visiteur tape un montant public en Md€, la page le
+  traduit en euros par habitant et par an, part des dépenses publiques,
+  part de la dette (25 Md€ → 362 €/hab/an, 1,5 % des dépenses, 0,7 % de
+  la dette). Des divisions pures par les totaux publiés (attributs
+  data-*, arithmétique de budget.ts partagée serveur/navigateur) ;
+  sans JavaScript, le bouton « Traduire » soumet en GET et le serveur
+  rend le même calcul. Paramètres hors bornes ramenés dedans — et
+  `Number(null)` valant 0, l'absence du paramètre retombe sur le défaut
+  1 Md€, pas sur zéro (piège noté en commentaire).

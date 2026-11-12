@@ -101,9 +101,13 @@ test("l'accueil répond, avec ses en-têtes de sécurité", async () => {
     assert.match(r.corps, /href="\/reperes"/);
     assert.match(r.corps, /href="\/proposer"/);
     assert.match(r.corps, /\/graphiques\.css/);
-    // Les grands thèmes, directement visibles : les six familles et
-    // chaque thème (hors « Autre »), avant « La France en chiffres ».
-    assert.ok(r.corps.indexOf('Les grands thèmes') < r.corps.indexOf('La France en chiffres'));
+    // L'ordre de Paul : le simulateur budgétaire en premier plan (juste
+    // après le héros), la France en chiffres ensuite, les idées, et les
+    // grands thèmes tout en bas.
+    assert.ok(r.corps.indexOf('à vous de jouer') < r.corps.indexOf('La France en chiffres'));
+    assert.ok(r.corps.indexOf('Dernières idées') < r.corps.indexOf('Les grands thèmes'));
+    // Chaque part du camembert mène au thème de son poste.
+    assert.match(r.corps, /aria-label="Remboursements et dégrèvements — voir le thème"/);
     for (const t of THEMES.filter((x) => x.id !== 'autre')) {
       assert.ok(r.corps.includes(`href="/theme/${t.id}"`), `thème absent de l'accueil : ${t.id}`);
     }
@@ -793,6 +797,45 @@ test('votre budget : un curseur par poste, recalcul identique sans JavaScript', 
     assert.match((await requete(port, 'GET', '/')).corps, /href="\/budget"/);
     assert.match((await requete(port, 'GET', '/reperes')).corps, /href="\/budget"/);
     assert.match((await requete(port, 'GET', '/sitemap.xml')).corps, /\/budget</);
+
+  } finally {
+    ferme();
+  }
+});
+
+test('le traducteur de montants : des divisions, sans JavaScript aussi', async () => {
+  const { port, ferme } = await demarre();
+  // ferme() en finally : une assertion qui saute ne doit pas laisser
+  // un serveur ouvert qui ferait pendre toute la suite de tests.
+  try {
+    const page = await requete(port, 'GET', '/reperes');
+    assert.equal(page.status, 200);
+    assert.match(page.corps, /Et pour vous, ça fait combien/);
+    // Les totaux officiels en attributs, le champ rendu au défaut (1 Md€)
+    // — le navigateur n'a aucune valeur à recopier.
+    assert.match(page.corps, new RegExp(`data-pop="${POPULATION.habitants}"`));
+    assert.match(page.corps, /name="montant"[^>]*value="1"/);
+    assert.match(page.corps, /Traduire/);
+
+    // Sans JavaScript : le GET re-rend le calcul du serveur. Mêmes
+    // formules que budget.ts — 10 Md€ ≈ 145 €/hab, 0,6 % des dépenses.
+    const f1 = (v) => v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const fe = (v) => Math.round(v).toLocaleString('fr-FR');
+    const mds = 10;
+    const sim = await requete(port, 'GET', '/reperes?montant=10&vue=camembert');
+    assert.equal(sim.status, 200);
+    assert.match(sim.corps, /name="montant"[^>]*value="10"/);
+    assert.match(sim.corps, new RegExp(`data-gr-hab>${fe((mds * 1e9) / POPULATION.habitants)} €<`));
+    assert.match(sim.corps, new RegExp(`data-gr-dep>${f1((mds / FINANCES_PUBLIQUES.dépensesMds) * 100)} %<`));
+    assert.match(sim.corps, new RegExp(`data-gr-dette>${f1((mds / FINANCES_PUBLIQUES.detteMds) * 100)} %<`));
+    // La vue camembert survit au paramètre du traducteur.
+    assert.match(sim.corps, /rcc-came-d/);
+
+    // Hors bornes ou absurde : ramené dedans ou ignoré, jamais cassé.
+    const borne = await requete(port, 'GET', '/reperes?montant=99999');
+    assert.equal(borne.status, 200);
+    assert.match(borne.corps, /name="montant"[^>]*value="5000"/);
+    assert.equal((await requete(port, 'GET', '/reperes?montant=abc')).status, 200);
 
   } finally {
     ferme();

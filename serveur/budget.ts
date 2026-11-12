@@ -180,3 +180,11 @@ export function cheminsAnneau(valeurs: number[], g: { cx: number; cy: number; rE
     return cheminAnneau(g, a0, (cumul / total) * 360);
   });
 }
+
+/** La part d'un montant dans un total publié, en % à une décimale —
+ *  « 0,6 % des dépenses publiques ». Sous le dixième, on le dit plutôt
+ *  que d'écrire « 0,0 % ». */
+export function partTexteMds(mds: number, totalMds: number): string {
+  const pct = (mds / totalMds) * 100;
+  return pct < 0.1 ? 'moins de 0,1\u00a0%' : `${formatteur.format(pct)}\u00a0%`;
+}

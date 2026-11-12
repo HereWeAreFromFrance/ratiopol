@@ -1607,13 +1607,25 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .bud-donut {
   display: block;
   width: 100%;
-  max-width: var(--r-came-max-large);
+  max-width: var(--r-donut-max);
   margin-inline: auto;
 }
 
 .bud-donut path {
   stroke: var(--r-papier);
   stroke-width: var(--r-esp-1);
+}
+
+/* Chaque part mène au thème de son poste (rendu.ts) : l'affordance
+   passe par le filet, épaissi au survol — jamais par la couleur seule. */
+.bud-donut a {
+  cursor: pointer;
+}
+
+.bud-donut a:hover path,
+.bud-donut a:focus-visible path {
+  stroke: var(--r-encre);
+  stroke-width: var(--r-esp-2);
 }
 
 .bud-donut-texte {
@@ -1635,10 +1647,11 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 }
 
 /* var() n'est pas évalué dans une requête média : le littéral répète
-   --r-ecran-palette (56rem), à tenir à jour avec jetons.css. */
-@media (min-width: 56rem) {
+   --r-ecran-donut (75rem), à tenir à jour avec jetons.css — le camembert
+   est en premier plan, mais les curseurs gardent leur place. */
+@media (min-width: 75rem) {
   .accueil-budget-grille {
-    grid-template-columns: minmax(0, var(--r-came-max-large)) 1fr;
+    grid-template-columns: minmax(0, var(--r-donut-max)) 1fr;
   }
 }
 
@@ -1657,4 +1670,41 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .bud-ligne .reperes-ligne-valeur {
   white-space: normal;
   text-align: right;
+}
+
+/* Le traducteur de montants (/reperes) : un champ, un bouton de secours,
+   des divisions rendues par le serveur. Même contrat que le simulateur :
+   le bouton disparaît quand le recalcul est devenu continu. */
+.grandeur-formulaire {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--r-esp-3) var(--r-esp-4);
+  margin-block: var(--r-esp-4);
+}
+
+.grandeur-libelle {
+  font-size: var(--r-txt-sm);
+  color: var(--r-encre-douce);
+}
+
+.grandeur-champ {
+  width: 14ch;
+  max-width: 100%;
+  padding: var(--r-esp-2) var(--r-esp-3);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--r-encre);
+  background: var(--r-papier-carte);
+  border: var(--r-esp-1p) solid var(--r-filet-fort);
+  border-radius: var(--r-rayon-sm);
+}
+
+.grandeur-champ:focus-visible {
+  outline: var(--r-esp-1p) solid var(--r-accent);
+  outline-offset: var(--r-esp-1);
+}
+
+.grandeur-live .grandeur-recalculer {
+  display: none;
 }

@@ -310,9 +310,16 @@ ${urls}
     }
     if (methode === 'GET' && chemin === '/reperes') {
       // Vue du graphique : lien ?vue=camembert, défaut barres — tout inconnu
-      // retombe sur le défaut (pas de page cassée par un mauvais lien).
+      // retombe sur le défaut (pas de page cassée par un mauvais lien). Le
+      // traducteur de montants suit la même règle (?montant=, défaut 1).
       const vue = url.searchParams.get('vue') === 'camembert' ? 'camembert' : 'barres';
-      envoieTexte(res, 200, rendu.pageReperes(assets, vue));
+      // Number(null) vaut 0 : le paramètre absent doit retomber sur le
+      // défaut (1 Md€), pas sur zéro.
+      const brut = url.searchParams.get('montant');
+      const montant = brut !== null && Number.isFinite(Number(brut))
+        ? Math.min(5000, Math.max(0, Number(brut)))
+        : 1;
+      envoieTexte(res, 200, rendu.pageReperes(assets, vue, montant));
       return;
     }
     if (methode === 'GET' && chemin === '/budget') {
