@@ -278,16 +278,25 @@ Retirés à la relecture : les comparaisons européennes sans la valeur
 française ; une compétence dont la source ne disait pas ce qui était
 écrit ; l'emploi des jeunes en informatique sur la fiche IA (il suggérait un
 effet de l'IA que la source ne mesure pas) ; le déficit, la dette et la
-dépense de la fiche Budget (comptes Insee de mai, 152,5 Md€, alors que les
-Repères affichent l'estimation de mars, 151,6 Md€ — deux millésimes
-officiels, on n'en affiche pas deux sur le site). Les montants 2026 issus
+dépense de la fiche Budget (compte Insee du 29 mai, 152,5 Md€, alors que les
+Repères affichent les tableaux détaillés du 28 août, 151,6 Md€ — deux
+millésimes officiels, on n'en affiche pas deux sur le site). Les montants 2026 issus
 du projet de loi de finances le disent dans leur précision, comme la hausse
 du tarif d'électricité, qui est une proposition de la CRE. Liens vérifiés
 un par un : deux morts retirés ; douze refusent les robots (Légifrance,
 Intérieur, Éducation) mais s'ouvrent dans un navigateur.
 
-**À reprendre** : les Repères (151,6 Md€) gagneraient à passer aux comptes
-de mai (152,5 Md€) ; plusieurs chiffres seront à rafraîchir à leur
+**Correction (12/11/2026)** : le 11/11 on a cru les Repères en retard sur
+le compte de mai. C'est l'inverse : les tableaux détaillés de l'Insee du
+28/08/2026 révisent le déficit 2025 de 152,5 à 151,6 Md€ ; les Repères sont
+au dernier millésime et ne bougent pas. Seuls leurs libellés de source
+étaient faux (« mars 2026 » pour le 28/08, « n° 323 » pour le n° 239). La
+fiche Budget passe au tableau 3.106 d'août : le solde de la Sécurité
+sociale y est de −5,8 Md€ (−6,7 en mars), et les trois soldes sont écrits
+avec le même signe. **Règle** : avant de dire qu'un chiffre est périmé,
+comparer les dates de parution, pas l'ordre de découverte.
+
+**À reprendre** : plusieurs chiffres seront à rafraîchir à leur
 prochaine édition (inflation définitive le 13/11/2026, enquête Sans
 domicile fin 2026, participation aux municipales 2026, données Intérieur
 bloquées aux robots).

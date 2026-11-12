@@ -193,11 +193,11 @@ export const SOURCES_REPERES: Source[] = [
     url: 'https://www.insee.fr/fr/statistiques/8988845?sommaire=8988934',
   },
   {
-    nom: 'Insee — « Dette et déficit publics au sens de Maastricht en 2025 » (Informations rapides, mars 2026)',
+    nom: 'Insee — « Dette et déficit publics au sens de Maastricht en 2025 » (Insee Résultats, comptes nationaux base 2020, 28 août 2026)',
     url: 'https://www.insee.fr/fr/statistiques/8988843?sommaire=8988934',
   },
   {
-    nom: 'Insee — « À la fin du deuxième trimestre 2026, le ratio de dette publique s’établit à 119,0 % du PIB » (Informations rapides n° 323, 29 septembre 2026)',
+    nom: 'Insee — « À la fin du deuxième trimestre 2026, le ratio de dette publique s’établit à 119,0 % du PIB » (Informations rapides n° 239, 29 septembre 2026)',
     url: 'https://www.insee.fr/fr/statistiques/9053525',
   },
 ];

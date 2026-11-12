@@ -2322,12 +2322,12 @@
     "extrait": "with the highest shares of taxes and social contributions as a percentage of GDP recorded in France (46.0%), Belgium (44.7%), Denmark (44.3%) and Austria (43.9%)."
    },
    {
-    "libelle": "Déficit par sous-secteur en 2025",
-    "valeur": "État : 128,1 Md€ ; administrations publiques locales : 15,6 Md€ ; administrations de sécurité sociale : -6,7 Md€",
-    "precision": "Première estimation des comptes 2025 (mars 2026)",
-    "source": "Insee — En 2025, le déficit public s’élève à 5,1 % du PIB, la dette publique à 115,6 % du PIB, Informations rapides n° 78 (27 mars 2026)",
-    "url": "https://www.insee.fr/fr/statistiques/8956575",
-    "extrait": "Le déficit de l’État diminue de 23,0 Md€ en 2025, à 128,1 Md€. […] Le déficit des administrations publiques locales (APUL) se réduit de 2,2 Md€, à 15,6 Md€."
+    "libelle": "Solde public par sous-secteur en 2025",
+    "valeur": "État : -128,1 Md€ ; administrations publiques locales : -15,6 Md€ ; administrations de sécurité sociale : -5,8 Md€",
+    "precision": "Besoin de financement au sens de Maastricht, comptes nationaux 2025 (base 2020), publiés en milliards d'euros à trois décimales et arrondis ici au dixième",
+    "source": "Insee — Dette et déficit publics au sens de Maastricht en 2025, Insee Résultats, tableau 3.106 (28 août 2026)",
+    "url": "https://www.insee.fr/fr/statistiques/8988843?sommaire=8988934",
+    "extrait": "Tableau 3.106, 2025, en milliards d'euros : S13 - Ensemble des administrations publiques -151.592 ; S13111 - État -128.103 ; S1313 - Administrations publiques locales -15.555 ; S1314 - Administrations de sécurité sociale -5.783"
    },
    {
     "libelle": "Charge d'intérêts de la dette publique",
