@@ -473,6 +473,56 @@ await pageBudSombre.screenshot({ path: 'captures/budget-sombre-1440.png', fullPa
 console.log('capture budget-sombre-1440');
 await pageBudSombre.close();
 
+// Le tableau de bord budgétaire de l'accueil : camembert double anneau,
+// sélection de curseurs, écart par habitant. On vérifie que le camembert
+// se RECOMPOSE (le path du premier segment change) et que la bande suit —
+// puis les mêmes vues sur /budget.
+const litBandeAccueil = (page) =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      ['dep', 'rec', 'solde', 'ecart', 'hab'].map((nom) => [
+        nom,
+        document.querySelector(`form[data-budget] [data-bud-${nom}]`)?.textContent ?? 'absent',
+      ]),
+    ),
+  );
+const cheminSegment = (page) =>
+  page.evaluate(() => document.querySelector('svg[data-donut] g[data-anneau="dep"] path')?.getAttribute('d') ?? 'absent');
+
+for (const [largeur, hauteur] of [[1440, 900], [360, 780]]) {
+  const pageDash = await navigateur.newPage();
+  await pageDash.setViewport({ width: largeur, height: hauteur });
+  await pageDash.goto(base + '/', { waitUntil: 'networkidle0' });
+  const section = await pageDash.$('.accueil-budget');
+  await section.screenshot({ path: `captures/accueil-budget-${largeur}.png` });
+  console.log('capture', `accueil-budget-${largeur}`);
+  await pageDash.close();
+}
+
+const pageBouge = await navigateur.newPage();
+await pageBouge.setViewport({ width: 1440, height: 900 });
+await pageBouge.goto(base + '/', { waitUntil: 'networkidle0' });
+const avant = await cheminSegment(pageBouge);
+const curseurAccueil = await pageBouge.$('form[data-budget] input[name="etat-enseignement-scolaire"]');
+await curseurAccueil.evaluate((c) => c.focus());
+for (let i = 0; i < 50; i++) await pageBouge.keyboard.press('ArrowLeft');
+const apres = await cheminSegment(pageBouge);
+if (avant === apres) throw new Error('le camembert ne s’est pas recomposé');
+console.log('accueil bande :', JSON.stringify(await litBandeAccueil(pageBouge)));
+const sectionBouge = await pageBouge.$('.accueil-budget');
+await sectionBouge.screenshot({ path: 'captures/accueil-budget-bouge-1440.png' });
+console.log('capture accueil-budget-bouge-1440');
+await pageBouge.close();
+
+const pageBudDonut = await navigateur.newPage();
+await pageBudDonut.setViewport({ width: 1440, height: 900 });
+await pageBudDonut.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+await pageBudDonut.goto(base + '/budget', { waitUntil: 'networkidle0' });
+const donutSeul = await pageBudDonut.$('svg[data-donut]');
+await donutSeul.screenshot({ path: 'captures/budget-donut-sombre.png' });
+console.log('capture budget-donut-sombre');
+await pageBudDonut.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);

@@ -12,8 +12,8 @@ import type { Erreurs, ValeursBrutes } from './gabarit';
 import { BORNES, EFFETS, UNITES, slugDepuisTitre } from './gabarit';
 import { COMMENT_AGIR, ficheDe, type Competence, type Fiche } from './fiches';
 import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
-import { BUDGET_ETAT, FINANCES_PUBLIQUES, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
-import { CURSEURS, calculeBudget, deltaTexte, mdsTexte, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
+import { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
+import { ANNEAU, CURSEURS, calculeBudget, cheminsAnneau, deltaTexte, eurosDeltaTexte, eurosTexte, mdsTexte, parHabitant, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -182,6 +182,7 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
         ${statRepere('Dépenses publiques', `${formatteurMds.format(FINANCES_PUBLIQUES.dépensesPib)} % du PIB`, `${formatteurMds.format(FINANCES_PUBLIQUES.dépensesMds)} Md€ en ${FINANCES_PUBLIQUES.année}`, '/reperes')}
         ${statRepere('Déficit public', `${formatteurMds.format(FINANCES_PUBLIQUES.déficitPib)} % du PIB`, `${formatteurMds.format(FINANCES_PUBLIQUES.déficitMds)} Md€ en ${FINANCES_PUBLIQUES.année}`, '/reperes')}
         ${statRepere('Dette publique', `${formatteurMds.format(FINANCES_PUBLIQUES.dettePib)} % du PIB`, `${formatteurEntier.format(FINANCES_PUBLIQUES.detteMds)} Md€ au ${FINANCES_PUBLIQUES.detteDate}`, '/reperes')}
+        ${statRepere('Dette par habitant', eurosTexte(parHabitant(FINANCES_PUBLIQUES.detteMds)), `dépenses publiques : ${eurosTexte(parHabitant(FINANCES_PUBLIQUES.dépensesMds))} par habitant et par an`, '/reperes')}
       </div>
     </div>
     <div class="accueil-france-appel">
@@ -194,8 +195,39 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
       </div>
       <p class="reperes-note">Sources&nbsp;: Insee (comptes nationaux) et loi de finances
       initiale ${BUDGET_ETAT.année} — le détail complet est sur la page
-      <a href="/reperes">Repères</a>.</p>
+      <a href="/reperes">Repères</a>. Rapports par habitant&nbsp;: division par la
+      population au ${POPULATION.date} (Insee, bilan démographique 2025).</p>
     </div>
+  </section>
+  <section class="section accueil-budget">
+    ${sectionTitre('Le budget de l’État, à vous de jouer', { href: '/budget', texte: 'Les vingt curseurs' })}
+    <form class="bud-formulaire" method="get" action="/budget" data-budget data-solde="${BUDGET_ETAT.soldeMds}">
+      <div class="accueil-budget-grille">
+        <div class="bud-donut-bloc">${donutBudget({})}</div>
+        <div>
+          <div class="reperes-sim-resultats reperes-sim-resultats-compact">
+            ${bandeBudget(calculeBudget({}))}
+          </div>
+          <fieldset class="bud-groupe bud-groupe-compact">
+            <legend>Dépenses — les plus grosses missions</legend>
+            <div class="bud-colonnes">${lignesBudget(CURSEURS.filter((c) => c.sens === 'dep').slice(0, 6), {})}</div>
+          </fieldset>
+          <fieldset class="bud-groupe bud-groupe-compact">
+            <legend>Recettes — les trois grands impôts</legend>
+            <div class="bud-colonnes">${lignesBudget(CURSEURS.filter((c) => c.sens === 'rec').slice(0, 3), {})}</div>
+          </fieldset>
+          <div class="bud-actions">
+            <button class="bouton bouton-secondaire bud-recalculer" type="submit">Recalculer</button>
+            <a href="/budget">Les vingt curseurs du budget&nbsp;→</a>
+          </div>
+        </div>
+      </div>
+    </form>
+    <p class="reperes-note">Six missions et trois impôts ici, chaque poste de la loi sur la page
+    <a href="/budget">Votre budget</a>. Le camembert se recompose et chaque indicateur bouge&nbsp;;
+    l'écart par habitant divise par la population officielle (${formatteurEntier.format(POPULATION.habitants)}
+    habitants au ${POPULATION.date}, Insee). Arithmétique pure, aucun effet économique modélisé
+    — pas une prévision.</p>
   </section>
   <section class="section">
     ${sectionTitre('Le plus de « d’accord »', { href: '/themes', texte: 'Tous les thèmes' })}
@@ -478,6 +510,17 @@ export function feuilleGraphiques(): string {
   liste('d', [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses]);
   liste('r', BUDGET_ETAT.recettesFiscales);
   liste('s', FINANCES_PUBLIQUES.sousSecteurs);
+  // Le camembert double anneau du simulateur (accueil et /budget) : les
+  // SEGMENTS sont des paths SVG, ils se colorent par fill — mêmes séries,
+  // même ordre que les camemberts de /reperes (rcc-*). La sixième part des
+  // recettes (non fiscales) prend le 6e slot de la palette. Les MÊMES
+  // règles posent background : les pastilles de légende des lignes de
+  // curseur (span HTML) et les segments (path SVG) portent la même classe
+  // — la ligne EST la légende de sa part.
+  [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses].forEach((_, i) =>
+    règles.push(`.rcd-${i} { fill: ${couleurSerie(i)}; background: ${couleurSerie(i)}; }`));
+  [...BUDGET_ETAT.recettesFiscales, 'non-fiscales'].forEach((_, i) =>
+    règles.push(`.rcr-${i} { fill: ${couleurSerie(i)}; background: ${couleurSerie(i)}; }`));
   // Les deux lignes de la courbe d'évolution : une classe pour le trait
   // (fill laissé à l'attribut fill="none" — le CSS des classes écraserait
   // sinon l'attribut et remplirait l'aire sous la courbe), une pour les
@@ -788,25 +831,93 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
 /* Votre budget — le simulateur poste par poste                        */
 /* ------------------------------------------------------------------ */
 
-/** Une ligne manipulable : le nom (label du curseur), le montant de la
- *  loi, la variation recalculée, la barre proportionnelle des Repères
- *  (même feuille /graphiques.css — absente sur un poste que les Repères
- *  ne tracent pas, comme les recettes non fiscales) et le curseur natif.
+/** Une ligne manipulable : la pastille de légende (la couleur de SA part
+ *  du camembert), le nom (label du curseur), le montant de la loi, la
+ *  variation recalculée, la barre proportionnelle des Repères (même
+ *  feuille /graphiques.css — absente sur un poste que les Repères ne
+ *  tracent pas, comme les recettes non fiscales) et le curseur natif.
  *  Le lien de thème reste la porte vers les idées — la ligne n'est pas
  *  un lien, elle contient un champ. */
-function ligneBudget(c: Curseur, classeBarre: string, pct: number): string {
+function ligneBudget(c: Curseur, classeBarre: string, classePoint: string, pct: number): string {
   const idChamp = `bud-${c.id}`;
   const idTheme = posteThemeParId(c.id);
   const theme = idTheme ? themeParId(idTheme) : undefined;
   return `
   <div class="bud-ligne">
     <div class="reperes-ligne-tete">
-      <span class="reperes-ligne-nom"><label for="${idChamp}">${e(c.nom)}</label>${theme ? ` <a class="reperes-ligne-theme" href="/theme/${e(idTheme!)}">${e(theme.nom)}&nbsp;→</a>` : ''}</span>
+      <span class="reperes-ligne-nom">${classePoint ? `<span class="reperes-point ${classePoint}" aria-hidden="true"></span> ` : ''}<label for="${idChamp}">${e(c.nom)}</label>${theme ? ` <a class="reperes-ligne-theme" href="/theme/${e(idTheme!)}">${e(theme.nom)}&nbsp;→</a>` : ''}</span>
       <span class="reperes-ligne-valeur">${mdsTexte(c.mds)}&nbsp;· <output for="${idChamp}" data-bud-var>${deltaTexte(variationPoste(c, pct))}</output></span>
     </div>
     ${classeBarre ? `<div class="reperes-piste"><div class="reperes-plein ${classeBarre}"></div></div>` : ''}
     <input type="range" id="${idChamp}" name="${c.id}" min="${VARIATION_MIN}" max="${VARIATION_MAX}" step="1" value="${pct}" data-mds="${c.mds}" data-sens="${c.sens}">
   </div>`;
+}
+
+/** Les classes de barres et de pastilles des curseurs : même ordre que
+ *  feuilleGraphiques() — les lignes reprennent les pistes des Repères et
+ *  les pastilles de leur part de camembert (la ligne est sa propre
+ *  légende). Les recettes non fiscales n'ont ni barre ni part ailleurs :
+ *  elles gardent la 6e pastille des recettes. */
+function classesBudget(): Map<string, { barre: string; point: string }> {
+  const classes = new Map<string, { barre: string; point: string }>();
+  [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses].forEach((p, i) => classes.set(p.id!, { barre: `rcw-d${i}`, point: `rcd-${i}` }));
+  BUDGET_ETAT.recettesFiscales.forEach((p, i) => classes.set(p.id!, { barre: `rcw-r${i}`, point: `rcr-${i}` }));
+  classes.set('recette-non-fiscales', { barre: '', point: 'rcr-5' });
+  return classes;
+}
+
+/** Les lignes de curseurs d'une sélection de postes. */
+function lignesBudget(selection: Curseur[], variations: Variations): string {
+  const classes = classesBudget();
+  return selection
+    .map((c) => {
+      const cl = classes.get(c.id) ?? { barre: '', point: '' };
+      return ligneBudget(c, cl.barre, cl.point, variations[c.id] ?? 0);
+    })
+    .join('\n');
+}
+
+/** Les indicateurs de la bande, partagés par /budget et l'accueil : le
+ *  solde de la loi, les variations, votre solde, l'écart — et sa
+ *  traduction par habitant, la division qui rend la politique budgétaire
+ *  lisible depuis un fauteuil. Les spans data-bud-* vivent sous la main de
+ *  web/budget.ts ; sans JavaScript, le GET du serveur les rend calculés. */
+function bandeBudget(r: ReturnType<typeof calculeBudget>): string {
+  return `<span>Solde de la loi&nbsp;: <strong>${mdsTexte(BUDGET_ETAT.soldeMds)}</strong></span>
+        <span>Vos dépenses&nbsp;: <strong data-bud-dep>${deltaTexte(r.depensesMds)}</strong></span>
+        <span>Vos recettes&nbsp;: <strong data-bud-rec>${deltaTexte(r.recettesMds)}</strong></span>
+        <span>Votre solde&nbsp;: <strong data-bud-solde>${mdsTexte(r.soldeMds)}</strong></span>
+        <span>Écart avec la loi&nbsp;: <strong data-bud-ecart>${deltaTexte(r.ecartMds)}</strong></span>
+        <span>soit par habitant&nbsp;: <strong data-bud-hab>${eurosDeltaTexte(parHabitant(r.ecartMds))}</strong></span>`;
+}
+
+/** Le camembert double anneau : les missions autour, les recettes dedans.
+ *  Premier tracé calculé ici (avec les variations du GET — statu quo à
+ *  l'arrivée) ; web/budget.ts recompose chaque path à chaque curseur avec
+ *  la même géométrie (cheminsAnneau, partagé). Chaque segment porte son
+ *  id et son montant de loi : le navigateur n'a rien à recopier, et les
+ *  postes sans curseur sur la page d'accueil restent dessinés. */
+function donutBudget(variations: Variations): string {
+  const depenses = BUDGET_ETAT.depenses.map((p) => p as Poste & { id: string });
+  depenses.push(BUDGET_ETAT.autresDepenses as Poste & { id: string });
+  const recettes: (Poste & { id: string })[] = [
+    ...BUDGET_ETAT.recettesFiscales.map((p) => p as Poste & { id: string }),
+    { id: 'recette-non-fiscales', nom: 'Recettes non fiscales', mds: BUDGET_ETAT.recettesNonFiscalesMds },
+  ];
+  const anneau = (postes: (Poste & { id: string })[], classe: string, groupe: 'dep' | 'rec'): string => {
+    const valeurs = postes.map((p) => p.mds * (1 + (variations[p.id] ?? 0) / 100));
+    const chemins = cheminsAnneau(valeurs, ANNEAU[groupe]);
+    return `    <g data-anneau="${groupe}">
+${postes.map((p, i) => `      <path class="${classe}${i}" data-id="${p.id}" data-mds="${p.mds}" d="${chemins[i]}"/>`).join('\n')}
+    </g>`;
+  };
+  return `<svg class="bud-donut" viewBox="0 0 320 320" data-donut="1" role="img"
+    aria-label="Le budget de l’État en deux anneaux : les missions de dépenses autour, les grandes recettes dedans. Les parts bougent avec les curseurs, les montants se lisent dans les lignes.">
+${anneau(depenses, 'rcd-', 'dep')}
+${anneau(recettes, 'rcr-', 'rec')}
+    <text class="bud-donut-texte" x="160" y="152" text-anchor="middle">Budget de l’État</text>
+    <text class="bud-donut-texte" x="160" y="176" text-anchor="middle">${BUDGET_ETAT.année}</text>
+  </svg>`;
 }
 
 /** La page /budget : les postes de la loi de finances deviennent des
@@ -817,16 +928,7 @@ function ligneBudget(c: Curseur, classeBarre: string, pct: number): string {
 export function pageBudget(assets: Assets, variations: Variations): string {
   const be = BUDGET_ETAT;
   const r = calculeBudget(variations);
-  // Les classes de barres suivent l'ordre de feuilleGraphiques() : les
-  // curseurs reprennent les pistes des Repères, rien n'est retracé.
-  const classesBarre = new Map<string, string>();
-  [...be.depenses, be.autresDepenses].forEach((p, i) => classesBarre.set(p.id!, `rcw-d${i}`));
-  be.recettesFiscales.forEach((p, i) => classesBarre.set(p.id!, `rcw-r${i}`));
-  const pctDe = (c: Curseur): number => variations[c.id] ?? 0;
-  const lignes = (sens: 'dep' | 'rec'): string =>
-    CURSEURS.filter((c) => c.sens === sens)
-      .map((c) => ligneBudget(c, classesBarre.get(c.id) ?? '', pctDe(c)))
-      .join('\n');
+  const lignes = (sens: 'dep' | 'rec'): string => lignesBudget(CURSEURS.filter((c) => c.sens === sens), variations);
   const contenu = `
 <div class="conteneur">
   <section class="section">
@@ -837,11 +939,10 @@ export function pageBudget(assets: Assets, variations: Variations): string {
 
     <form class="bud-formulaire" method="get" action="/budget" data-budget data-solde="${be.soldeMds}">
       <div class="reperes-sim-resultats">
-        <span>Solde de la loi&nbsp;: <strong>${mdsTexte(be.soldeMds)}</strong></span>
-        <span>Vos dépenses&nbsp;: <strong data-bud-dep>${deltaTexte(r.depensesMds)}</strong></span>
-        <span>Vos recettes&nbsp;: <strong data-bud-rec>${deltaTexte(r.recettesMds)}</strong></span>
-        <span>Votre solde&nbsp;: <strong data-bud-solde>${mdsTexte(r.soldeMds)}</strong></span>
-        <span>Écart avec la loi&nbsp;: <strong data-bud-ecart>${deltaTexte(r.ecartMds)}</strong></span>
+        ${bandeBudget(r)}
+      </div>
+      <div class="bud-donut-bloc">
+        ${donutBudget(variations)}
       </div>
 
       <fieldset class="bud-groupe">

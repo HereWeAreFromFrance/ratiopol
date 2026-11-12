@@ -1598,3 +1598,63 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .bud-live .bud-recalculer {
   display: none;
 }
+
+/* Le camembert double anneau du simulateur : les segments sont des paths
+   recalculés par web/budget.ts (attribut d, jamais de style inline — la
+   CSP l'interdit), les couleurs par classes de série de /graphiques.css.
+   Chaque segment porte un filet papier, comme les parts des camemberts
+   des Repères. */
+.bud-donut {
+  display: block;
+  width: 100%;
+  max-width: var(--r-came-max-large);
+  margin-inline: auto;
+}
+
+.bud-donut path {
+  stroke: var(--r-papier);
+  stroke-width: var(--r-esp-1);
+}
+
+.bud-donut-texte {
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-sm);
+  fill: var(--r-encre-douce);
+}
+
+.bud-donut-bloc {
+  min-width: 0;
+}
+
+/* La section « à vous de jouer » de l'accueil : le camembert d'un côté,
+   la bande et les curseurs de l'autre — empilés sur mobile. */
+.accueil-budget-grille {
+  display: grid;
+  gap: var(--r-esp-8);
+  align-items: start;
+}
+
+/* var() n'est pas évalué dans une requête média : le littéral répète
+   --r-ecran-palette (56rem), à tenir à jour avec jetons.css. */
+@media (min-width: 56rem) {
+  .accueil-budget-grille {
+    grid-template-columns: minmax(0, var(--r-came-max-large)) 1fr;
+  }
+}
+
+/* Version resserrée des groupes, pour la sélection de l'accueil. */
+.bud-groupe-compact {
+  margin-block: 0 var(--r-esp-4);
+}
+
+.bud-groupe-compact legend {
+  font-size: var(--r-txt-lg);
+}
+
+/* Les montants des lignes de curseur portent DEUX nombres (loi + variation) :
+   sur les colonnes étroites, la cellule peut passer à la ligne plutôt que de
+   déborder — l'échelle reste tabulaire, seule la fin de ligne bouge. */
+.bud-ligne .reperes-ligne-valeur {
+  white-space: normal;
+  text-align: right;
+}

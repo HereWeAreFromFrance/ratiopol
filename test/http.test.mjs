@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -107,6 +107,22 @@ test("l'accueil répond, avec ses en-têtes de sécurité", async () => {
     for (const t of THEMES.filter((x) => x.id !== 'autre')) {
       assert.ok(r.corps.includes(`href="/theme/${t.id}"`), `thème absent de l'accueil : ${t.id}`);
     }
+
+    // « Le budget de l'État, à vous de jouer » : le camembert double
+    // anneau, la sélection de curseurs, la bande avec l'écart par
+    // habitant — et la carte officielle « par habitant », division par
+    // la population Insee (même formule que budget.ts).
+    assert.match(r.corps, /Le budget de l’État, à vous de jouer/);
+    assert.match(r.corps, /data-donut="1"/);
+    assert.match(r.corps, /data-anneau="dep"/);
+    assert.match(r.corps, /data-anneau="rec"/);
+    assert.match(r.corps, /class="rcd-0"/);
+    assert.match(r.corps, /form[^>]*data-budget/);
+    assert.match(r.corps, /data-bud-hab>0 €</);
+    assert.match(r.corps, /Dette par habitant/);
+    const fe = (v) => Math.round(v).toLocaleString('fr-FR');
+    const euros = (mds) => (mds * 1e9) / POPULATION.habitants;
+    assert.ok(r.corps.includes(`${fe(euros(FINANCES_PUBLIQUES.detteMds))} €`), 'dette par habitant absente de l’accueil');
 
   } finally {
     ferme();
@@ -595,6 +611,11 @@ test('les repères budgétaires restent cohérents', () => {
   // Le solde de l'État est négatif : les chiffres le disent, pas le contraire.
   assert.ok(be.soldeMds < 0 && fp.déficitMds > 0);
 
+  // La population des rapports par habitant : un ordre de grandeur
+  // crédible pour la France — une coquille dans le chiffre sauterait
+  // partout (dette par habitant, écart par habitant).
+  assert.ok(POPULATION.habitants > 60e6 && POPULATION.habitants < 75e6, `population incohérente : ${POPULATION.habitants}`);
+
   // Chaque poste mène vers un thème existant — et aucun poste ne reste sans
   // thème (les lignes de méthode, hors Poste, ne sont pas concernées).
   const postes = [...be.depenses, be.autresDepenses, ...be.recettesFiscales, ...fp.sousSecteurs];
@@ -729,6 +750,13 @@ test('votre budget : un curseur par poste, recalcul identique sans JavaScript', 
     // il ne disparaît que si le JS prend la main (classe bud-live).
     assert.match(page.corps, /Recalculer/);
     assert.ok(!page.corps.includes('bud-live'));
+    // Le camembert double anneau : chaque segment porte son id et son
+    // montant de loi, couleurs par classes de série de /graphiques.css.
+    assert.match(page.corps, /data-donut="1"/);
+    assert.match(page.corps, /<path class="rcd-0" data-id="etat-remboursements" data-mds="145\.6"/);
+    assert.match(page.corps, /<path class="rcr-0" data-id="recette-ir"/);
+    assert.match((await requete(port, 'GET', '/graphiques.css')).corps, /\.rcd-0 \{ fill: var\(--r-serie-1\)/);
+    assert.match((await requete(port, 'GET', '/graphiques.css')).corps, /\.rcr-5 \{ fill: var\(--r-serie-6\)/);
 
     // Sans JavaScript : le GET re-rend le calcul du serveur. Même
     // formule que serveur/budget.ts (partagé avec le navigateur) — la
@@ -748,6 +776,11 @@ test('votre budget : un curseur par poste, recalcul identique sans JavaScript', 
     assert.match(sim.corps, new RegExp(`data-bud-rec>\\+${f(dRec)} Md€<`));
     assert.match(sim.corps, new RegExp(`data-bud-ecart>\\+${f(ecart)} Md€<`));
     assert.match(sim.corps, new RegExp(`data-bud-solde>${f(BUDGET_ETAT.soldeMds + ecart)} Md€<`));
+
+    // L'écart par habitant : la division par la population officielle,
+    // même écriture que eurosDeltaTexte (budget.ts).
+    const fe = (v) => Math.round(v).toLocaleString('fr-FR');
+    assert.match(sim.corps, new RegExp(`data-bud-hab>\\+${fe((ecart * 1e9) / POPULATION.habitants)}\u00a0€<`));
 
     // Inconnu ignoré, hors bornes ramené dedans : jamais de page cassée
     // par un lien trafiqué (même règle que ?vue= sur /reperes).

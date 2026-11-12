@@ -345,3 +345,35 @@ renvoi depuis les postes de /reperes, page dans le sitemap, appel final vers
 /proposer (« le simulateur vous a déjà donné l'ordre de grandeur de
 l'arbitrage »). Captures clair/sombre, 360/1440, sans JS et au clavier
 (`captures/budget-*`).
+
+**Complément (même jour) — le tableau de bord de l'accueil et l'impact par
+habitant.** Paul : « sur la première page, plusieurs indicateurs chiffrés
+avec des courbes ou des camemberts, des choses visuelles qu'on puisse bouger
+et qui aient un impact direct sur les autres chiffres ; comprendre
+directement les impacts d'une politique budgétaire sur les Français. »
+
+- **La section « Le budget de l'État, à vous de jouer »** sur l'accueil :
+  un **camembert double anneau** (missions autour, recettes dedans, tracé
+  en paths SVG recalculés — l'attribut `d`, jamais de style inline), les
+  six plus grosses missions et les trois grands impôts en curseurs, la
+  bande d'indicateurs, et la porte vers les vingt curseurs de /budget. Le
+  formulaire de l'accueil se soumet vers /budget : sans JavaScript, on
+  tombe sur la page complète, calculée. Chaque ligne porte la **pastille de
+  légende de sa part** (même classe que son segment : la ligne EST sa
+  légende). Un poste baissé rend sa part aux autres ; un poste supprimé
+  laisse le vide — les rayons ne changent jamais.
+- **Les traductions par habitant** : `POPULATION` (69 082 000 habitants au
+  1er janvier 2026, Insee Première n° 2087, bilan démographique 2025 —
+  chiffre vérifié à la source, recopié de la phrase publiée) sert à des
+  divisions, rien d'autre : la bande gagne « Écart avec la loi : … soit par
+  habitant : +649 € », et l'accueil une carte officielle « Dette par
+  habitant / dépenses publiques par habitant et par an ». L'« impact sur
+  les Français » reste de l'arithmétique : jamais un modèle, jamais un
+  adjectif.
+- **Les couleurs suivent la règle des Repères** : mêmes séries, même ordre
+  (`rcc-*` camemberts, `rcd-*`/`rcr-*` donut du simulateur, fill pour les
+  paths, background pour les pastilles — une seule règle CSS par poste).
+  La géométrie (`ANNEAU`, `cheminsAnneau`) vit dans `budget.ts, partagée
+  serveur (premier tracé) et navigateur (recomposition) : les deux dessins
+  coïncident par construction, vérifié par capture (le path change quand
+  le curseur bouge, la bande suit).

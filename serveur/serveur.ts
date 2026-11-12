@@ -46,7 +46,7 @@ export { DepotMemoire } from './depot-memoire';
 export { DepotPg } from './postgres';
 export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
 export { echappe, empreinteAvis, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
-export { BUDGET_ETAT, FINANCES_PUBLIQUES, ÉVOLUTION, POSTES_CIBLES } from './reperes';
+export { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, ÉVOLUTION, POSTES_CIBLES } from './reperes';
 export { FAMILLES, THEMES } from './themes';
 export { FICHES } from './fiches';
 export type { Assets } from './rendu';

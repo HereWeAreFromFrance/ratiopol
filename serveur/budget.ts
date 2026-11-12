@@ -12,7 +12,7 @@
 // couper une mission n'économise pas mécaniquement son montant — la note de
 // méthode de la page le dit. Les nombres ne portent aucun jugement.
 
-import { BUDGET_ETAT, type Poste } from './reperes';
+import { BUDGET_ETAT, POPULATION, type Poste } from './reperes';
 
 /** Les bornes d'un curseur, en % du montant de la loi : un poste peut être
  *  supprimé (−100) ou doublé (+100), pas davantage. */
@@ -114,4 +114,69 @@ export function mdsTexte(mds: number): string {
  *  suffit côté baisse ; « 0,0 Md€ » sans signe au point mort. */
 export function deltaTexte(mds: number): string {
   return mds > 0 ? `+${formatteur.format(mds)} Md€` : `${formatteur.format(mds)} Md€`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Les traductions par habitant                                       */
+/* ------------------------------------------------------------------ */
+
+const formatteurEuros = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+
+/** Un montant en Md€, traduit en euros par habitant — une division par la
+ *  population officielle (reperes.ts), rien d'autre. L'« impact sur les
+ *  Français » du simulateur reste de l'arithmétique : jamais un modèle. */
+export function parHabitant(mds: number): number {
+  return (mds * 1e9) / POPULATION.habitants;
+}
+
+/** « 52 050 € » — la traduction par habitant d'un montant publié. */
+export function eurosTexte(euros: number): string {
+  return `${formatteurEuros.format(euros)} €`;
+}
+
+/** « +625 € » signé côté plus, le moins du CLDR côté baisse, « 0 € » au
+ *  point mort — même règle d'écriture que deltaTexte. */
+export function eurosDeltaTexte(euros: number): string {
+  return euros > 0 ? `+${formatteurEuros.format(euros)} €` : `${formatteurEuros.format(euros)} €`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Le camembert double anneau                                         */
+/* ------------------------------------------------------------------ */
+
+/** La géométrie des deux anneaux du budget de l'État (missions autour,
+ *  recettes dedans), en unités du viewBox 320×320. Partagée serveur
+ *  (premier tracé) et navigateur (recomposition à chaque curseur) : les
+ *  deux dessins coïncident par construction. */
+export const ANNEAU = {
+  dep: { cx: 160, cy: 160, rExt: 150, rInt: 114 },
+  rec: { cx: 160, cy: 160, rExt: 102, rInt: 70 },
+} as const;
+
+/** Le path d'un segment d'anneau, de a0 à a1 degrés (0 en haut, sens
+ *  horaire). Dégenerescent (moins d'un dixième de degré) : chaîne vide,
+ *  le segment disparaît — couper une mission à 0 la fait disparaître. */
+function cheminAnneau(g: { cx: number; cy: number; rExt: number; rInt: number }, a0: number, a1: number): string {
+  if (a1 - a0 < 0.1) return '';
+  const point = (r: number, a: number): string => {
+    const t = ((a - 90) * Math.PI) / 180;
+    return `${(g.cx + r * Math.cos(t)).toFixed(1)} ${(g.cy + r * Math.sin(t)).toFixed(1)}`;
+  };
+  const grand = a1 - a0 > 180 ? 1 : 0;
+  return `M ${point(g.rExt, a0)} A ${g.rExt} ${g.rExt} 0 ${grand} 1 ${point(g.rExt, a1)} L ${point(g.rInt, a1)} A ${g.rInt} ${g.rInt} 0 ${grand} 0 ${point(g.rInt, a0)} Z`;
+}
+
+/** Les paths de tous les segments d'un anneau, chacun proportionnel à sa
+ *  part du total des valeurs passées — les parts bougent, les rayons ne
+ *  changent jamais : un poste qui baisse rend sa part aux autres, un
+ *  poste supprimé laisse le vide. */
+export function cheminsAnneau(valeurs: number[], g: { cx: number; cy: number; rExt: number; rInt: number }): string[] {
+  const total = valeurs.reduce((s, v) => s + v, 0);
+  if (total <= 0) return valeurs.map(() => '');
+  let cumul = 0;
+  return valeurs.map((v) => {
+    const a0 = (cumul / total) * 360;
+    cumul += Math.max(0, v);
+    return cheminAnneau(g, a0, (cumul / total) * 360);
+  });
 }

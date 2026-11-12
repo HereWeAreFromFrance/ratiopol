@@ -180,6 +180,22 @@ export function posteCibleParId(id: string): PosteCible | undefined {
 }
 
 /* ------------------------------------------------------------------ */
+/* La population (pour les rapports par habitant)                     */
+/* ------------------------------------------------------------------ */
+
+/** La population résidant en France au 1er janvier 2026. Elle ne sert qu'à
+ *  des DIVISIONS (un montant publié ÷ la population) : « dette par
+ *  habitant », « écart par habitant » — une traduction, jamais un modèle.
+ *  Recopiée du bilan démographique : « Au 1er janvier 2026, la population
+ *  résidant en France est estimée à 69,1 millions d'habitants » (le
+ *  chiffre fin vient de la figure 1 : 69 082 milliers). */
+export const POPULATION = {
+  date: '1er janvier 2026',
+  /** 69 082 milliers d'habitants, figure 1 du bilan démographique. */
+  habitants: 69_082_000,
+};
+
+/* ------------------------------------------------------------------ */
 /* Les sources                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -187,6 +203,10 @@ export const SOURCES_REPERES: Source[] = [
   {
     nom: 'Direction du budget — « Les chiffres clés du budget de l’État pour 2026 » (loi de finances initiale pour 2026)',
     url: 'https://www.budget.gouv.fr/reperes/loi_de_finances/articles/chiffres-cles-budget-etat-2026',
+  },
+  {
+    nom: 'Insee — « Bilan démographique 2025 » (Insee Première n° 2087, 13 janvier 2026 — population au 1er janvier 2026)',
+    url: 'https://www.insee.fr/fr/statistiques/8719824',
   },
   {
     nom: 'Insee — « Dépenses et recettes des administrations publiques en 2025 » (Insee Résultats, comptes nationaux base 2020, 28 août 2026)',
