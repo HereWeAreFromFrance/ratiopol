@@ -1708,3 +1708,13 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .grandeur-live .grandeur-recalculer {
   display: none;
 }
+
+/* Le simulateur d'impôt réutilise les styles du traducteur ; le menu du
+   foyer garde sa largeur naturelle (14ch couperait « Célibataire… »). */
+.grandeur-choix {
+  width: auto;
+}
+
+.impot-live .impot-recalculer {
+  display: none;
+}

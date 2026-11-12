@@ -401,3 +401,46 @@ d'autres sujets, un maximum d'interactions faciles à comprendre ».
   rend le même calcul. Paramètres hors bornes ramenés dedans — et
   `Number(null)` valant 0, l'absence du paramètre retombe sur le défaut
   1 Md€, pas sur zéro (piège noté en commentaire).
+
+## 2026-11-12 (suite) — Trois nouveaux sujets : dette en courbe, argent public en camembert, impôt sur le revenu en simulateur
+
+Paul : « fais-les tous » (les trois candidats proposés). Même règle pour
+chacun : la donnée officielle d'abord, recopiée à la source, jamais de
+mémoire — et l'arithmétique partagée serveur/navigateur.
+
+**1. La dette publique 2021-2025 en courbe** (/reperes, section Évolution).
+Série du tableau 3.101 des comptes nationaux (fichier xlsx Insee téléchargé
+et lu) : 112,8 · 111,4 · 109,5 · 112,6 · 115,7 % du PIB (Md€ : 2 828,8 →
+3 460,1). Série 3 de la palette, échelle propre 105-120 % — jamais de
+double axe. **La série s'arrête au 31/12/2025 (115,7 %) alors que
+« L'essentiel » affiche le point trimestriel au 30/06/2026 (119,0 %)** :
+deux dates officielles, deux usages — la note de la page le dit, le test
+n'exige PAS l'égalité (contrairement aux dépenses/recettes). La table
+repliable gagne deux colonnes.
+
+**2. « D'où vient l'argent » — recettes de toutes les administrations**
+(/reperes). Camembert + barres du tableau 3.201 : cotisations sociales
+nettes 498,7 · impôts sur la production et les importations 470,4 ·
+impôts courants sur le revenu et le patrimoine 389,9 · impôts en capital
+21,7 · autres 181,8 (production + revenus + transferts − impôts non
+recouvrables : la ligne « autres » est exacte, la somme retombe au total
+publié 1 562,5 Md€ — testé). Le complément de « qui dépense » : mêmes
+vues barres/camembert, lignes cliquables vers les thèmes.
+
+**3. L'impôt sur le revenu 2026, et le vôtre** (/reperes). Barème, formule
+et décote recopiés de la brochure pratique IR 2026 (impots.gouv.fr, PDF
+officiel lu et vérifié mot pour mot — l'exemple du couple à 3 parts,
+54 000 € → 2 112 €, est REPRODUIT par la formule et verrouillé par test).
+Le simulateur : revenu net imposable + foyer (une ou deux parts), impôt
+selon le barème (R × taux − N × k), décote (897/1 483 − 45,25 %), impôt à
+payer, taux moyen, tranche marginale. Pure arithmétique dans
+`serveur/impot.ts` partagée serveur (GET sans JS) et navigateur (direct) ;
+le barème complet et la décote s'affichent repliés. Sont dits et pas
+simulés : crédits et réductions, demi-parts (plafonnement du quotient
+familial), prélèvement à la source. Sources ajoutées (service-public F1419,
+brochure IR 2026).
+
+**Deux bugs pris par la capture** : le taux moyen passait une fraction
+(0,07) au formateur de pourcent (« moins de 0,1 % » pour 7 %) ; la capture
+tapait dans le champ caché `revenu` du traducteur (même `name` que le
+champ du simulateur). Les deux corrigés, le taux moyen verrouillé par test.

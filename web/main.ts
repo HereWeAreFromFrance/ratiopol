@@ -14,13 +14,16 @@
 //    par mission et par grande recette, solde recalculé en direct — même
 //    règle, le module pur de l'arithmétique est partagé avec le serveur ;
 //  · le traducteur de montants sur /reperes (grandeur.ts) : un montant
-//    tapé, traduit en euros par habitant et en parts des totaux publiés.
+//    tapé, traduit en euros par habitant et en parts des totaux publiés ;
+//  · le simulateur d'impôt sur /reperes (impot.ts) : revenu et foyer
+//    tapés, barème 2026 et décote officiels recalculés en direct.
 // Zéro framework, zéro dépendance, un seul fichier bundlé par build.mjs.
 
 import { annoncerVisites } from './visites.ts';
 import { poseSimulateur } from './simulateur.ts';
 import { poseBudget } from './budget.ts';
 import { poseGrandeurs } from './grandeur.ts';
+import { poseImpot } from './impot.ts';
 
 const BORNES: Record<string, [number, number]> = {
   titre: [12, 140],
@@ -95,4 +98,5 @@ poseAvis();
 poseSimulateur();
 poseBudget();
 poseGrandeurs();
+poseImpot();
 annoncerVisites();

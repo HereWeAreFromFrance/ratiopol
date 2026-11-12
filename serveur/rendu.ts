@@ -12,8 +12,9 @@ import type { Erreurs, ValeursBrutes } from './gabarit';
 import { BORNES, EFFETS, UNITES, slugDepuisTitre } from './gabarit';
 import { COMMENT_AGIR, ficheDe, type Competence, type Fiche } from './fiches';
 import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
-import { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
+import { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, POSTES_CIBLES, RECETTES_APU, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
 import { ANNEAU, CURSEURS, calculeBudget, cheminsAnneau, deltaTexte, eurosDeltaTexte, eurosTexte, mdsTexte, parHabitant, partTexteMds, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
+import { BAREME_IR, calculeIr, type Foyer } from './impot';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -510,6 +511,7 @@ export function feuilleGraphiques(): string {
   liste('d', [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses]);
   liste('r', BUDGET_ETAT.recettesFiscales);
   liste('s', FINANCES_PUBLIQUES.sousSecteurs);
+  liste('a', RECETTES_APU.recettes);
   // Le camembert double anneau du simulateur (accueil et /budget) : les
   // SEGMENTS sont des paths SVG, ils se colorent par fill — mêmes séries,
   // même ordre que les camemberts de /reperes (rcc-*). La sixième part des
@@ -529,6 +531,10 @@ export function feuilleGraphiques(): string {
   règles.push('.rcv-r-trait { stroke: var(--r-serie-2); }');
   règles.push('.rcv-d { fill: var(--r-serie-1); }');
   règles.push('.rcv-r { fill: var(--r-serie-2); }');
+  // La courbe de dette : troisième série, mêmes classes dédiées.
+  règles.push('.rcv-dt-trait { stroke: var(--r-serie-3); }');
+  règles.push('.rcv-dt { fill: var(--r-serie-3); }');
+  règles.push('.rcc-courbe-dt { background: var(--r-serie-3); }');
   // Les pastilles de la légende de la courbe : classes DÉDIÉES, alignées sur
   // les traits ci-dessus. Ne pas réutiliser rcc-d0/rcc-r0 (classes des
   // camemberts, où le 1er poste des recettes prend aussi la série 1) :
@@ -659,6 +665,53 @@ function courbeÉvolution(étiquettes: 'toutes' | 'bornes' = 'toutes', sim = fal
 </svg>`;
 }
 
+/** La courbe de la dette publique : même géométrie et mêmes règles que
+ *  courbeÉvolution (SVG inline, chaque point étiqueté, une seule échelle),
+ *  série 3. Échelle propre 105-120 % du PIB : la dette ne se compare pas
+ *  sur l'axe des dépenses et recettes, elle a son graphe — jamais de
+ *  double axe. */
+function courbeDette(): string {
+  const ev = ÉVOLUTION;
+  const gauche = 56;
+  const droite = 584;
+  const haut = 24;
+  const bas = 304;
+  const echelleBasse = 105;
+  const echelleHaute = 120;
+  const yDe = (v: number) => bas - (v - echelleBasse) * ((bas - haut) / (echelleHaute - echelleBasse));
+  const xDe = (i: number) => gauche + (i * (droite - gauche)) / (ev.années.length - 1);
+  const ligne = `<polyline class="rcv-dt-trait" fill="none" stroke-width="2" points="${ev.dettePib
+    .map((v, i) => `${xDe(i).toFixed(1)},${yDe(v).toFixed(1)}`)
+    .join(' ')}"/>`;
+  const points = ev.dettePib
+    .map((v, i) => {
+      const ancre = i === 0 ? 'start' : 'middle';
+      const étiquetteX = (i === 0 ? xDe(i) + 9 : xDe(i)).toFixed(1);
+      return `<circle class="rcv-dt" cx="${xDe(i).toFixed(1)}" cy="${yDe(v).toFixed(1)}" r="4"/>
+    <text class="reperes-courbe-etiquette" x="${étiquetteX}" y="${(yDe(v) - 10).toFixed(1)}" text-anchor="${ancre}">${formatteurMds.format(v)}</text>`;
+    })
+    .join('\n');
+  const grille = [105, 110, 115, 120]
+    .map((v) => {
+      const y = yDe(v);
+      return `<line class="reperes-courbe-grille" x1="${gauche}" y1="${y.toFixed(1)}" x2="${droite}" y2="${y.toFixed(1)}"/>
+    <text class="reperes-courbe-axe" x="${gauche - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end">${v}&nbsp;%</text>`;
+    })
+    .join('\n');
+  const années = ev.années
+    .map((a, i) => `<text class="reperes-courbe-axe" x="${xDe(i).toFixed(1)}" y="328" text-anchor="middle">${a}</text>`)
+    .join('\n');
+  return `<svg class="reperes-courbe" viewBox="0 0 640 340" role="img"
+     aria-label="Dette publique en % du PIB, de ${ev.années[0]} à ${ev.années[ev.années.length - 1]} : ${ev.dettePib
+       .map((v) => formatteurMds.format(v))
+       .join(', ')}">
+  ${grille}
+  ${ligne}
+  ${points}
+  ${années}
+</svg>`;
+}
+
 /** Le bloc « votre hypothèse » : de l'arithmétique pure sur la courbe,
  *  rien d'autre. Rendu statique = statu quo (les valeurs de la dernière
  *  année publiée) ; le JS du navigateur met ces mêmes spans à jour quand
@@ -700,11 +753,24 @@ function ongletsVue(vue: 'barres' | 'camembert'): string {
 </div>`;
 }
 
-export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barres', montant = 1): string {
+/** Les paramètres des outils « et vous » de /reperes : le montant du
+ *  traducteur et le foyer du simulateur d'impôt. Défauts posés par la
+ *  route ; le rendu sans JavaScript les rend, le JS les fait vivre. */
+export interface OptionsReperes {
+  montant?: number;
+  revenu?: number;
+  foyer?: Foyer;
+}
+
+export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barres', options: OptionsReperes = {}): string {
   const be = BUDGET_ETAT;
   const fp = FINANCES_PUBLIQUES;
   const ev = ÉVOLUTION;
   const depensesListe = [...be.depenses, be.autresDepenses];
+  const montant = options.montant ?? 1;
+  const revenu = options.revenu ?? 30000;
+  const foyer: Foyer = options.foyer === 'couple' ? 'couple' : 'celibataire';
+  const ir = calculeIr(revenu, foyer);
   /** Le traducteur de montants : un chiffre public tapé par le visiteur,
    *  traduit par des divisions pures (population, dépenses, dette) —
    *  « et pour vous, ça fait combien ? ». Sans JavaScript, le GET
@@ -715,6 +781,8 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     <form class="grandeur-formulaire" method="get" action="/reperes" data-grandeur
           data-pop="${POPULATION.habitants}" data-depenses="${fp.dépensesMds}" data-dette="${fp.detteMds}">
       <input type="hidden" name="vue" value="${vue}">
+      <input type="hidden" name="revenu" value="${revenu}">
+      <input type="hidden" name="foyer" value="${foyer}">
       <label class="grandeur-libelle" for="grandeur-montant">Un montant public, en milliards d'euros</label>
       <input class="grandeur-champ" type="number" id="grandeur-montant" name="montant"
              min="0" max="5000" step="0.1" value="${montant}" inputmode="decimal">
@@ -729,6 +797,57 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     <p class="reperes-note">Des divisions, rien d'autre&nbsp;: le montant que vous tapez, ÷ la population
     (${POPULATION.date}, Insee), ÷ les dépenses publiques et la dette publiées (${fp.année}). Aucun
     commentaire — l'ordre de grandeur est à vous.</p>
+  </section>
+`;
+  /** Le simulateur d'impôt sur le revenu : barème et décote officiels
+   *  2026 (serveur/impot.ts, recopiés de la brochure IR 2026), la même
+   *  arithmétique des deux côtés (sans JS : le GET re-rend le calcul). */
+  const sectionImpot = `
+  <section class="section">
+    <div class="section-titre"><h2>L’impôt sur le revenu ${BAREME_IR.année} — et le vôtre&nbsp;?</h2></div>
+    <form class="grandeur-formulaire" method="get" action="/reperes" data-impot>
+      <input type="hidden" name="vue" value="${vue}">
+      <input type="hidden" name="montant" value="${montant}">
+      <label class="grandeur-libelle" for="impot-revenu">Votre revenu net imposable, en euros</label>
+      <input class="grandeur-champ" type="number" id="impot-revenu" name="revenu"
+             min="0" max="10000000" step="100" value="${revenu}" inputmode="numeric">
+      <label class="grandeur-libelle" for="impot-foyer">Votre foyer</label>
+      <select class="grandeur-champ grandeur-choix" id="impot-foyer" name="foyer">
+        <option value="celibataire"${foyer === 'celibataire' ? ' selected' : ''}>Une part (célibataire, divorcé, veuf)</option>
+        <option value="couple"${foyer === 'couple' ? ' selected' : ''}>Deux parts (couple)</option>
+      </select>
+      <button class="bouton bouton-secondaire impot-recalculer" type="submit">Calculer</button>
+    </form>
+    <div class="reperes-sim-resultats">
+      <span>impôt selon le barème&nbsp;: <strong data-ir-brut>${eurosTexte(ir.brut)}</strong></span>
+      <span>décote&nbsp;: <strong data-ir-decote>${ir.decote > 0 ? `−${eurosTexte(ir.decote)}` : 'aucune'}</strong></span>
+      <span>impôt à payer&nbsp;: <strong data-ir-payer>${eurosTexte(ir.apresDecote)}</strong></span>
+      <span>taux moyen&nbsp;: <strong data-ir-moyen>${partTexteMds(ir.tauxMoyen * 100, 100)}</strong></span>
+      <span>tranche marginale&nbsp;: <strong data-ir-marginal>${Math.round(ir.tauxMarginal * 100)}&nbsp;%</strong></span>
+    </div>
+    <details class="reperes-table-details">
+      <summary>Le barème ${BAREME_IR.année} (revenus ${BAREME_IR.revenus}) et la décote</summary>
+      <div class="reperes-table-scroll">
+        <table class="reperes-table">
+          <thead><tr><th>Revenu par part</th><th>Taux</th><th>Formule officielle</th></tr></thead>
+          <tbody>
+            ${BAREME_IR.tranches
+              .map(
+                (t) => `<tr><td>${t.plafondQ === Number.POSITIVE_INFINITY ? `plus de ${formatteurEntier.format(BAREME_IR.tranches[BAREME_IR.tranches.length - 2]!.plafondQ)}&nbsp;€` : `jusqu’à ${formatteurEntier.format(t.plafondQ)}&nbsp;€`}</td><td>${Math.round(t.taux * 100)}&nbsp;%</td><td>${t.deductionParPart === 0 ? 'impôt nul' : `R&nbsp;×&nbsp;${t.taux.toString().replace('.', ',')} − N&nbsp;×&nbsp;${t.deductionParPart.toLocaleString('fr-FR')}&nbsp;€`}</td></tr>`
+              )
+              .join('\n')}
+          </tbody>
+        </table>
+      </div>
+      <p class="reperes-note">Décote (brochure IR 2026)&nbsp;: si l'impôt est inférieur à
+      ${BAREME_IR.decote.celibataire.seuil}&nbsp;€ (une part), décote = ${BAREME_IR.decote.celibataire.plancher}&nbsp;€ −
+      45,25&nbsp;% de l'impôt&nbsp;; à deux parts, sous ${BAREME_IR.decote.couple.seuil}&nbsp;€,
+      ${BAREME_IR.decote.couple.plancher}&nbsp;€ − 45,25&nbsp;%.</p>
+    </details>
+    <p class="reperes-note">Le revenu net imposable s'entend après abattement (10&nbsp;% ou frais
+    réels). Calcul avant crédits et réductions d'impôt&nbsp;; les demi-parts des enfants ne sont pas
+    simulées (plafonnement du quotient familial). Barème, formules et décote recopiés de la
+    brochure pratique IR 2026 (source en bas de page) — ${BAREME_IR.millésime}.</p>
   </section>
 `;
   const contenu = `
@@ -752,6 +871,7 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     ${ongletsVue(vue)}
   </section>
 ${sectionGrandeurs}
+${sectionImpot}
 
   <section class="section">
     <div class="section-titre"><h2>Budget de l’État — dépenses (${be.année})</h2></div>
@@ -802,6 +922,15 @@ ${sectionGrandeurs}
   </section>
 
   <section class="section">
+    <div class="section-titre"><h2>D’où vient l’argent — recettes de toutes les administrations (${RECETTES_APU.année})</h2></div>
+    <p class="reperes-note">${e(RECETTES_APU.note)} Total&nbsp;: ${mdsTexte(RECETTES_APU.totalMds)}.</p>
+    ${vue === 'camembert' ? cameDe(RECETTES_APU.recettes, RECETTES_APU.totalMds, 'a') : `<div class="reperes-colonnes">
+      ${lignesPostes(RECETTES_APU.recettes, RECETTES_APU.totalMds, 'a')}
+    </div>`}
+    ${totalPoste('Total des recettes publiques', RECETTES_APU.totalMds)}
+  </section>
+
+  <section class="section">
     <div class="section-titre"><h2>Évolution — dépenses et recettes publiques (${ev.années[0]}-${ev.années[ev.années.length - 1]})</h2></div>
     <p class="reperes-note">En % du PIB, comptes nationaux (source plus bas). La série ne se
     limite pas à la courbe&nbsp;: chaque valeur est écrite sur le tracé et la table repliable
@@ -812,15 +941,23 @@ ${sectionGrandeurs}
     </div>
     ${courbeÉvolution('toutes', true)}
     ${simBlocÉvolution()}
+    <div class="reperes-courbe-legend">
+      <span><span class="reperes-point rcc-courbe-dt"></span> Dette publique</span>
+    </div>
+    ${courbeDette()}
+    <p class="reperes-note">La dette au 31/12 de chaque année (tableau 3.101, comptes nationaux).
+    Fin ${ev.années[ev.années.length - 1]}&nbsp;: ${formatteurMds.format(ev.dettePib[ev.dettePib.length - 1])}&nbsp;% du PIB —
+    le point trimestriel au ${fp.detteDate} (${formatteurMds.format(fp.dettePib)}&nbsp;%) reste dans
+    «&nbsp;L’essentiel&nbsp;»&nbsp;: deux dates officielles, deux usages.</p>
     <details class="reperes-table-details">
       <summary>La série complète en table</summary>
       <div class="reperes-table-scroll">
         <table class="reperes-table">
-          <thead><tr><th>Année</th><th>Dépenses (% du PIB)</th><th>Recettes (% du PIB)</th><th>Dépenses (Md€)</th><th>Recettes (Md€)</th></tr></thead>
+          <thead><tr><th>Année</th><th>Dépenses (% du PIB)</th><th>Recettes (% du PIB)</th><th>Dépenses (Md€)</th><th>Recettes (Md€)</th><th>Dette (% du PIB)</th><th>Dette (Md€)</th></tr></thead>
           <tbody>
             ${ev.années
               .map(
-                (a, i) => `<tr><th>${a}</th><td>${formatteurMds.format(ev.dépensesPib[i])}</td><td>${formatteurMds.format(ev.recettesPib[i])}</td><td>${formatteurMds.format(ev.dépensesMds[i])}</td><td>${formatteurMds.format(ev.recettesMds[i])}</td></tr>`
+                (a, i) => `<tr><th>${a}</th><td>${formatteurMds.format(ev.dépensesPib[i])}</td><td>${formatteurMds.format(ev.recettesPib[i])}</td><td>${formatteurMds.format(ev.dépensesMds[i])}</td><td>${formatteurMds.format(ev.recettesMds[i])}</td><td>${formatteurMds.format(ev.dettePib[i])}</td><td>${formatteurMds.format(ev.detteMds[i])}</td></tr>`
               )
               .join('\n')}
           </tbody>

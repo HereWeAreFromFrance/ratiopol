@@ -46,7 +46,9 @@ export { DepotMemoire } from './depot-memoire';
 export { DepotPg } from './postgres';
 export { slugDepuisTitre, valideEntree, nettoie } from './gabarit';
 export { echappe, empreinteAvis, empreinteIp, empreinteMotDePasse, motDePasseValide, Limiteur } from './securite';
-export { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, ÉVOLUTION, POSTES_CIBLES } from './reperes';
+export { BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, RECETTES_APU, ÉVOLUTION, POSTES_CIBLES } from './reperes';
+export { eurosTexte } from './budget';
+export { BAREME_IR, calculeIr } from './impot';
 export { FAMILLES, THEMES } from './themes';
 export { FICHES } from './fiches';
 export type { Assets } from './rendu';
@@ -313,13 +315,19 @@ ${urls}
       // retombe sur le défaut (pas de page cassée par un mauvais lien). Le
       // traducteur de montants suit la même règle (?montant=, défaut 1).
       const vue = url.searchParams.get('vue') === 'camembert' ? 'camembert' : 'barres';
-      // Number(null) vaut 0 : le paramètre absent doit retomber sur le
-      // défaut (1 Md€), pas sur zéro.
-      const brut = url.searchParams.get('montant');
-      const montant = brut !== null && Number.isFinite(Number(brut))
-        ? Math.min(5000, Math.max(0, Number(brut)))
+      // Number(null) vaut 0 : un paramètre absent doit retomber sur son
+      // défaut, pas sur zéro — même règle pour le traducteur (1 Md€) et
+      // le simulateur d'impôt (30 000 € de revenu, une part).
+      const brutMontant = url.searchParams.get('montant');
+      const montant = brutMontant !== null && Number.isFinite(Number(brutMontant))
+        ? Math.min(5000, Math.max(0, Number(brutMontant)))
         : 1;
-      envoieTexte(res, 200, rendu.pageReperes(assets, vue, montant));
+      const brutRevenu = url.searchParams.get('revenu');
+      const revenu = brutRevenu !== null && Number.isFinite(Number(brutRevenu))
+        ? Math.min(10_000_000, Math.max(0, Math.round(Number(brutRevenu))))
+        : 30000;
+      const foyer = url.searchParams.get('foyer') === 'couple' ? 'couple' : 'celibataire';
+      envoieTexte(res, 200, rendu.pageReperes(assets, vue, { montant, revenu, foyer }));
       return;
     }
     if (methode === 'GET' && chemin === '/budget') {

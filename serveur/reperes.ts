@@ -130,7 +130,12 @@ export const FINANCES_PUBLIQUES = {
  *  seule vraie série temporelle de la page (les missions d'une même année
  *  ne se tracent pas en courbe). La courbe trace ces montants, elle ne les
  *  remplace pas : les chiffres de 2025 restent ceux du bloc « L'essentiel ».
- *  Même source et même millésime que FINANCES_PUBLIQUES. */
+ *  Même source et même millésime que FINANCES_PUBLIQUES.
+ *  La dette suit la même règle — ATTENTION à ses millésimes : la série
+ *  annuelle s'arrête à fin 2025 (115,7 % du PIB, tableau 3.101), tandis
+ *  que « L'essentiel » affiche le point trimestriel au 30/06/2026
+ *  (119,0 %) : deux dates officielles différentes, la note de la page le
+ *  dit. */
 export const ÉVOLUTION = {
   /** Série en % du PIB, du plus ancien au plus récent. */
   années: [2021, 2022, 2023, 2024, 2025],
@@ -139,6 +144,36 @@ export const ÉVOLUTION = {
   /** Série en Md€, pour lire les montants sans changer de source. */
   dépensesMds: [1491.4, 1550.3, 1608.3, 1672.7, 1714.1],
   recettesMds: [1326.2, 1424.4, 1456.4, 1503.5, 1562.5],
+  /** Dette publique au sens de Maastricht, tableau 3.101 (Insee, comptes
+   *  nationaux annuels, base 2020) — valeurs au 31/12 de chaque année. */
+  dettePib: [112.8, 111.4, 109.5, 112.6, 115.7],
+  detteMds: [2828.8, 2955.6, 3103.2, 3306.1, 3460.1],
+};
+
+/* ------------------------------------------------------------------ */
+/* Les recettes de TOUTES les administrations publiques               */
+/* ------------------------------------------------------------------ */
+
+/** D'où vient l'argent public : les recettes consolidées des APU (État,
+ *  Sécurité sociale, collectivités, ODAC), tableau 3.201 des comptes
+ *  nationaux — le complément des sous-secteurs « qui dépense ». La ligne
+ *  « autres » est exacte : recettes de production + revenus de la
+ *  propriété + autres transferts − impôts non recouvrables (188,5 − 6,7).
+ *  Les montants s'additionnent au total publié (1 562,5 Md€). */
+export const RECETTES_APU = {
+  année: 2025,
+  totalMds: 1562.5,
+  recettes: [
+    { id: 'apu-cotisations', nom: 'Cotisations sociales nettes', mds: 498.7, theme: 'sante' },
+    { id: 'apu-impots-production', nom: 'Impôts sur la production et les importations (dont TVA)', mds: 470.4, theme: 'impots' },
+    { id: 'apu-impots-revenu', nom: 'Impôts courants sur le revenu et le patrimoine (dont impôt sur le revenu)', mds: 389.9, theme: 'impots' },
+    { id: 'apu-impots-capital', nom: 'Impôts en capital', mds: 21.7, theme: 'impots' },
+    { id: 'apu-autres-recettes', nom: 'Autres recettes (production, revenus, transferts, nets des impôts non recouvrables)', mds: 181.8, theme: 'autre' },
+  ] as Poste[],
+  note:
+    'Recettes consolidées de l’ensemble des administrations publiques : ' +
+    'cotisations et impôts de tous les niveaux (État, Sécurité sociale, collectivités), ' +
+    'transferts internes exclus. Une cotisation ou un impôt apparaît une seule fois.',
 };
 
 /* ------------------------------------------------------------------ */
@@ -219,5 +254,13 @@ export const SOURCES_REPERES: Source[] = [
   {
     nom: 'Insee — « À la fin du deuxième trimestre 2026, le ratio de dette publique s’établit à 119,0 % du PIB » (Informations rapides n° 239, 29 septembre 2026)',
     url: 'https://www.insee.fr/fr/statistiques/9053525',
+  },
+  {
+    nom: 'Service-Public — « Quel est le barème de l’impôt sur le revenu ? » (barème 2026, revenus 2025)',
+    url: 'https://www.service-public.gouv.fr/particuliers/vosdroits/F1419',
+  },
+  {
+    nom: 'Impots.gouv.fr — Brochure pratique IR 2026, « Calcul de l’impôt » (barème, formule et décote 2026)',
+    url: 'https://www.impots.gouv.fr/www2/fichiers/documentation/brochure/ir_2026/pdf_som/21-calcul_impot_369a382.pdf',
   },
 ];

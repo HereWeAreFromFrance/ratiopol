@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
+import { creeServeur, DepotMemoire, empreinteAvis, empreinteMotDePasse, BUDGET_ETAT, FINANCES_PUBLIQUES, POPULATION, RECETTES_APU, eurosTexte, BAREME_IR, calculeIr, ÉVOLUTION, POSTES_CIBLES, FAMILLES, FICHES, THEMES } from '../dist/serveur.mjs';
 
 const ASSETS = { js: '/statique/main-test.js', css: '/statique/page-test.css' };
 const SEL = 'sel-de-test-assez-long';
@@ -620,6 +620,35 @@ test('les repères budgétaires restent cohérents', () => {
   // partout (dette par habitant, écart par habitant).
   assert.ok(POPULATION.habitants > 60e6 && POPULATION.habitants < 75e6, `population incohérente : ${POPULATION.habitants}`);
 
+  // La série de dette suit la règle des séries : cinq années, valeurs
+  // dans un ordre de grandeur crédible — une coquille sauterait à l'œil.
+  // Elle ne se confond PAS avec le point trimestriel de « L'essentiel »
+  // (fin 2025 contre 30/06/2026) : deux dates officielles, deux usages.
+  assert.equal(ÉVOLUTION.dettePib.length, 5);
+  assert.equal(ÉVOLUTION.detteMds.length, 5);
+  for (const v of ÉVOLUTION.dettePib) assert.ok(v > 80 && v < 150, `dette % PIB incohérente : ${v}`);
+  for (const v of ÉVOLUTION.detteMds) assert.ok(v > 2000 && v < 4000, `dette Md€ incohérente : ${v}`);
+
+  // Les recettes de toutes les administrations s'additionnent au total
+  // publié — la ligne « autres » est exacte, rien d'omis.
+  const sommeApu = RECETTES_APU.recettes.reduce((s, p) => s + p.mds, 0);
+  assert.ok(Math.abs(sommeApu - RECETTES_APU.totalMds) < 0.15, `recettes APU : ${sommeApu} ≠ ${RECETTES_APU.totalMds}`);
+  for (const p of RECETTES_APU.recettes) {
+    assert.ok(p.theme && THEMES.some((t) => t.id === p.theme), `recette APU sans thème : ${p.nom}`);
+  }
+
+  // Le barème IR recopié de la brochure : l'exemple du couple à 3 parts
+  // (54 000 € → 2 112 €) vérifie la formule entière R×taux − N×k.
+  const exemple = 54000 * 0.11 - 3 * 1276;
+  assert.equal(Math.round(exemple), 2112, 'la formule du barème ne reproduit plus l’exemple officiel');
+  assert.equal(calculeIr(54000, 'couple').brut, 3388);
+  // La décote, recopiée mot pour mot : sous 1 982 € à une part,
+  // 897 − 45,25 % de l'impôt — et jamais d'impôt négatif.
+  const petit = calculeIr(20000, 'celibataire');
+  assert.ok(petit.brut === 924 && petit.decote > 470 && petit.decote < 490 && Math.round(petit.apresDecote) === 445);
+  assert.equal(calculeIr(200000, 'celibataire').decote, 0);
+  assert.equal(BAREME_IR.tranches.length, 5);
+
   // Chaque poste mène vers un thème existant — et aucun poste ne reste sans
   // thème (les lignes de méthode, hors Poste, ne sont pas concernées).
   const postes = [...be.depenses, be.autresDepenses, ...be.recettesFiscales, ...fp.sousSecteurs];
@@ -836,6 +865,59 @@ test('le traducteur de montants : des divisions, sans JavaScript aussi', async (
     assert.equal(borne.status, 200);
     assert.match(borne.corps, /name="montant"[^>]*value="5000"/);
     assert.equal((await requete(port, 'GET', '/reperes?montant=abc')).status, 200);
+
+  } finally {
+    ferme();
+  }
+});
+
+test('la page Repères : dette en courbe, argent public en camembert, impôt en simulateur', async () => {
+  const { port, ferme } = await demarre();
+  // ferme() en finally : une assertion qui saute ne doit pas laisser
+  // un serveur ouvert qui ferait pendre toute la suite de tests.
+  try {
+    const page = await requete(port, 'GET', '/reperes');
+    assert.equal(page.status, 200);
+    // La courbe de dette : série 3, chaque point étiqueté, échelle propre.
+    assert.match(page.corps, /rcv-dt-trait/);
+    assert.match(page.corps, /Dette publique/);
+    assert.match(page.corps, /112,8/);
+    assert.match(page.corps, /115,7/);
+    assert.match(page.corps, /Dette \(Md€\)/);
+    // Le camembert des recettes de toutes les administrations : cotisations
+    // en tête, total publié, note de consolidation.
+    assert.match(page.corps, /D’où vient l’argent/);
+    assert.match(page.corps, /Cotisations sociales nettes/);
+    assert.match(page.corps, /transferts internes exclus/);
+    assert.match((await requete(port, 'GET', '/graphiques.css')).corps, /\.rcw-a0 \{ width: 100%/);
+    const came = await requete(port, 'GET', '/reperes?vue=camembert');
+    assert.match(came.corps, /rcc-came-a/);
+
+    // Le simulateur d'impôt : défauts rendus par le serveur (30 000 €,
+    // une part), barème visible, méthode dite.
+    assert.match(page.corps, /L’impôt sur le revenu 2026 — et le vôtre/);
+    assert.match(page.corps, /data-impot/);
+    assert.match(page.corps, /name="revenu"[^>]*value="30000"/);
+    assert.match(page.corps, /brochure pratique IR 2026/);
+
+    // Sans JavaScript : le GET re-rend le calcul du serveur — même module
+    // pur que le navigateur (calculeIr), mêmes formatages (eurosTexte).
+    const attendu = calculeIr(54000, 'couple');
+    assert.equal(attendu.brut, 3388);
+    const couple = await requete(port, 'GET', '/reperes?revenu=54000&foyer=couple');
+    assert.equal(couple.status, 200);
+    assert.match(couple.corps, /name="revenu"[^>]*value="54000"/);
+    assert.ok(couple.corps.includes(`data-ir-payer>${eurosTexte(attendu.apresDecote)}<`), 'impôt du couple absent');
+    assert.ok(couple.corps.includes(`data-ir-brut>${eurosTexte(attendu.brut)}<`), 'impôt selon le barème absent');
+    // Une part sous le seuil : la décote s'affiche, soustraite.
+    const decote = calculeIr(20000, 'celibataire');
+    const celib = await requete(port, 'GET', '/reperes?revenu=20000&foyer=celibataire');
+    assert.ok(celib.corps.includes(`data-ir-decote>−${eurosTexte(decote.decote)}<`), 'décote absente');
+    assert.ok(celib.corps.includes(`data-ir-payer>${eurosTexte(decote.apresDecote)}<`), 'impôt après décote absent');
+    const attMoyen = calculeIr(54000, 'couple');
+    assert.ok(couple.corps.includes(`data-ir-moyen>${(attMoyen.tauxMoyen * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\u00a0%<`), 'taux moyen mal calculé');
+    // Hors bornes ou absurde : ramené dedans, jamais de page cassée.
+    assert.equal((await requete(port, 'GET', '/reperes?revenu=abc&foyer=solo')).status, 200);
 
   } finally {
     ferme();

@@ -559,6 +559,59 @@ await (await pageGrJs.$('form[data-grandeur]')).screenshot({ path: 'captures/rep
 console.log('capture reperes-grandeur-live');
 await pageGrJs.close();
 
+// Les trois nouveaux sujets de /reperes : la courbe de dette (série
+// officielle, chaque point étiqueté), le camembert des recettes de toutes
+// les administrations, et le simulateur d'impôt — sans JavaScript (GET)
+// puis en direct.
+const pageDette = await navigateur.newPage();
+await pageDette.setViewport({ width: 1440, height: 900 });
+await pageDette.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+const courbeDette = await pageDette.$('polyline.rcv-dt-trait');
+const svgDette = await courbeDette.evaluateHandle((p) => p.closest('svg'));
+await svgDette.asElement().screenshot({ path: 'captures/reperes-dette-1440.png' });
+console.log('capture reperes-dette-1440');
+await pageDette.close();
+
+const pageArgent = await navigateur.newPage();
+await pageArgent.setViewport({ width: 1440, height: 900 });
+await pageArgent.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+await pageArgent.goto(base + '/reperes?vue=camembert', { waitUntil: 'networkidle0' });
+const cameArgent = await pageArgent.$('.rcc-came-a');
+await cameArgent.screenshot({ path: 'captures/reperes-argent-public-sombre.png' });
+console.log('capture reperes-argent-public-sombre');
+await pageArgent.close();
+
+const pageIr = await navigateur.newPage();
+await pageIr.setJavaScriptEnabled(false);
+await pageIr.setViewport({ width: 1440, height: 900 });
+await pageIr.goto(base + '/reperes?revenu=54000&foyer=couple', { waitUntil: 'networkidle0' });
+await (await pageIr.$('form[data-impot]')).screenshot({ path: 'captures/reperes-impot-sans-js.png' });
+console.log('capture reperes-impot-sans-js');
+await pageIr.close();
+
+const pageIrJs = await navigateur.newPage();
+await pageIrJs.setViewport({ width: 1440, height: 900 });
+await pageIrJs.goto(base + '/reperes', { waitUntil: 'networkidle0' });
+const champRevenu = await pageIrJs.$('form[data-impot] input[name="revenu"]');
+await champRevenu.evaluate((c) => {
+  c.value = '';
+});
+await champRevenu.type('20000');
+const luIr = await pageIrJs.evaluate(() =>
+  Object.fromEntries(
+    ['brut', 'decote', 'payer', 'moyen', 'marginal'].map((nom) => [
+      nom,
+      document.querySelector(`[data-ir-${nom}]`)?.textContent ?? 'absent',
+    ]),
+  ),
+);
+console.log('impôt 20 000 € une part :', JSON.stringify(luIr));
+const boutonCacheIr = await pageIrJs.$eval('.impot-recalculer', (b) => getComputedStyle(b).display === 'none');
+if (!boutonCacheIr) throw new Error('le bouton Calculer doit disparaître une fois le JS posé');
+await (await pageIrJs.$('form[data-impot]')).screenshot({ path: 'captures/reperes-impot-live.png' });
+console.log('capture reperes-impot-live');
+await pageIrJs.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);
