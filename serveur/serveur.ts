@@ -38,6 +38,7 @@ import {
 } from './securite';
 import * as rendu from './rendu';
 import type { Assets } from './rendu';
+import { litVariations } from './budget';
 import { THEMES } from './themes';
 
 export { DepotMemoire } from './depot-memoire';
@@ -189,6 +190,7 @@ export function creeServeur(opts: OptionsServeur): Server {
   <url><loc>${origine}/proposer</loc></url>
   <url><loc>${origine}/themes</loc></url>
   <url><loc>${origine}/reperes</loc></url>
+  <url><loc>${origine}/budget</loc></url>
   <url><loc>${origine}/agir</loc></url>
 ${THEMES.map((t) => `  <url><loc>${origine}/theme/${t.id}</loc></url>`).join('\n')}
 ${urls}
@@ -311,6 +313,15 @@ ${urls}
       // retombe sur le défaut (pas de page cassée par un mauvais lien).
       const vue = url.searchParams.get('vue') === 'camembert' ? 'camembert' : 'barres';
       envoieTexte(res, 200, rendu.pageReperes(assets, vue));
+      return;
+    }
+    if (methode === 'GET' && chemin === '/budget') {
+      // Le simulateur poste par poste : sans JavaScript, le formulaire se
+      // soumet en GET et le serveur re-rend le même recalcul (l'arithmétique
+      // vit dans budget.ts, partagée avec le navigateur) ; avec, la même
+      // page vit en direct (web/budget.ts). Hors bornes ou inconnu : ignoré,
+      // ramené dans les bornes — jamais de page cassée par un lien trafiqué.
+      envoieTexte(res, 200, rendu.pageBudget(assets, litVariations(url.searchParams)));
       return;
     }
     if (methode === 'GET' && chemin === '/apropos') {

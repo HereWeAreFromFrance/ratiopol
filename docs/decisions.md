@@ -300,3 +300,48 @@ comparer les dates de parution, pas l'ordre de découverte.
 prochaine édition (inflation définitive le 13/11/2026, enquête Sans
 domicile fin 2026, participation aux municipales 2026, données Intérieur
 bloquées aux robots).
+
+## 2026-11-12 — « Votre budget » : le simulateur poste par poste
+
+Paul : « donner plus de contenu objectif et permettre aux utilisateurs
+d'interagir facilement, par exemple en bougeant les curseurs des budgets et
+en voyant les conséquences. » Le simulateur d'hypothèse (deux poignées
+globales sur la courbe) passe à l'étage au-dessus : **un curseur par poste
+de la loi de finances**, page dédiée `/budget` (périmètre choisi par Paul :
+dépenses **et** recettes de l'État ; les sous-secteurs APU se chevauchent,
+les additionner serait trompeur — hors périmètre).
+
+**La mécanique** : 14 missions + « Autres missions » en dépenses, 5
+recettes fiscales nettes + les non fiscales en recettes — les constantes de
+`reperes.ts`, rien de recopié (couvertes par le test de cohérence). Chaque
+ligne : nom, montant de la loi, variation recalculée, barre proportionnelle
+des Repères (même feuille `/graphiques.css`), curseur natif
+`<input type="range">` de −100 % (suppression) à +100 % (doublement). La
+bande de résultats recalcule : vos dépenses, vos recettes, votre solde,
+l'écart avec la loi. Chaque ligne garde son lien de thème — le chiffre mène
+à l'idée.
+
+**L'arithmétique vit dans `serveur/budget.ts`, module pur sans I/O partagé
+serveur et navigateur** (comme le gabarit avant lui) : sans JavaScript, le
+formulaire se soumet en GET et le serveur re-rend la même page avec le même
+calcul — curseurs repositionnés par `value`, inconnus ignorés, hors bornes
+ramenés dedans (jamais de page cassée par un lien trafiqué). Avec
+JavaScript (`web/budget.ts`), le recalcul est continu et le bouton
+« Recalculer » disparaît (classe `bud-live`). Vérifié par capture : GET sans
+JS et clavier avec JS rendent la même bande au caractère près
+(Défense −50 %, IR +10 % → écart +43,2 Md€, solde −91,4 Md€).
+
+**Les règles d'objectivité ne bougent pas** : le solde part du solde publié
+(−134,6 Md€, tous budgets) et chaque point de curseur ajoute ou retire
+exactement sa part du montant publié. La note de méthode le dit : aucun
+effet économique n'est modélisé — doubler un impôt ne double pas forcément
+son rendement, supprimer une mission n'économise pas mécaniquement son
+montant. Les prélèvements aux collectivités et à l'UE ne sont pas des
+curseurs : ce sont des transferts, pas des économies. Aucun adjectif, aucune
+couleur de jugement dans les nombres.
+
+**Croisements** : lien « Budget » dans la navigation, bouton sur l'accueil,
+renvoi depuis les postes de /reperes, page dans le sitemap, appel final vers
+/proposer (« le simulateur vous a déjà donné l'ordre de grandeur de
+l'arbitrage »). Captures clair/sombre, 360/1440, sans JS et au clavier
+(`captures/budget-*`).

@@ -13,6 +13,7 @@ import { BORNES, EFFETS, UNITES, slugDepuisTitre } from './gabarit';
 import { COMMENT_AGIR, ficheDe, type Competence, type Fiche } from './fiches';
 import { FAMILLES, NIVEAUX, THEMES, themeParId, themesDe, niveauParId } from './themes';
 import { BUDGET_ETAT, FINANCES_PUBLIQUES, POSTES_CIBLES, SOURCES_REPERES, ÉVOLUTION, posteCibleParId, posteThemeParId, type Poste } from './reperes';
+import { CURSEURS, calculeBudget, deltaTexte, mdsTexte, variationPoste, VARIATION_MAX, VARIATION_MIN, type Curseur, type Variations } from './budget';
 import { echappe } from './securite';
 
 /** Les fichiers statiques construits par build.mjs (noms empreintés). */
@@ -91,6 +92,7 @@ ${cssSup ? `<link rel="stylesheet" href="${e(cssSup)}">` : ''}
       <a href="/proposer">Proposer une idée</a>
       <a href="/themes">Thèmes</a>
       <a href="/reperes">Repères</a>
+      <a href="/budget">Budget</a>
       <a href="/agir">Agir</a>
       <a href="/apropos">À propos</a>
     </nav>
@@ -186,6 +188,7 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
       <p>Un chiffre vous intrigue&nbsp;? Chaque question peut devenir une proposition
       concrète — la vôtre.</p>
       <div class="heros-actions">
+        <a class="bouton bouton-secondaire" href="/budget">Votre budget ${BUDGET_ETAT.année}&nbsp;→</a>
         <a class="bouton bouton-secondaire" href="/reperes">Voir tous les repères&nbsp;→</a>
         <a class="bouton bouton-primaire" href="/proposer">Proposer une idée&nbsp;→</a>
       </div>
@@ -684,7 +687,7 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     <div class="section-titre"><h2>Budget de l’État — dépenses (${be.année})</h2></div>
     <p class="reperes-note">Crédits de paiement du budget général — ${be.millésime}. Les missions
     principales sont listées&nbsp;; les autres sont regroupées — rien n’est omis, le total est
-    celui de la loi.</p>
+    celui de la loi. Bougez ces postes vous-même&nbsp;: <a href="/budget">votre budget ${be.année}</a>.</p>
     ${vue === 'camembert' ? cameDe(depensesListe, be.totalDepensesMds, 'd') : `<div class="reperes-colonnes">
       ${lignesPostes(depensesListe, be.totalDepensesMds, 'd')}
     </div>`}
@@ -775,6 +778,113 @@ export function pageReperes(assets: Assets, vue: 'barres' | 'camembert' = 'barre
     titre: 'Repères — les chiffres officiels des finances publiques — RatioPol',
     description:
       'Budget de l’État et finances publiques de la France : dépenses, recettes, déficit, dette, évolution. Chiffres officiels, sourcés et datés, sans commentaire.',
+    contenu,
+    assets,
+    cssSup: '/graphiques.css',
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Votre budget — le simulateur poste par poste                        */
+/* ------------------------------------------------------------------ */
+
+/** Une ligne manipulable : le nom (label du curseur), le montant de la
+ *  loi, la variation recalculée, la barre proportionnelle des Repères
+ *  (même feuille /graphiques.css — absente sur un poste que les Repères
+ *  ne tracent pas, comme les recettes non fiscales) et le curseur natif.
+ *  Le lien de thème reste la porte vers les idées — la ligne n'est pas
+ *  un lien, elle contient un champ. */
+function ligneBudget(c: Curseur, classeBarre: string, pct: number): string {
+  const idChamp = `bud-${c.id}`;
+  const idTheme = posteThemeParId(c.id);
+  const theme = idTheme ? themeParId(idTheme) : undefined;
+  return `
+  <div class="bud-ligne">
+    <div class="reperes-ligne-tete">
+      <span class="reperes-ligne-nom"><label for="${idChamp}">${e(c.nom)}</label>${theme ? ` <a class="reperes-ligne-theme" href="/theme/${e(idTheme!)}">${e(theme.nom)}&nbsp;→</a>` : ''}</span>
+      <span class="reperes-ligne-valeur">${mdsTexte(c.mds)}&nbsp;· <output for="${idChamp}" data-bud-var>${deltaTexte(variationPoste(c, pct))}</output></span>
+    </div>
+    ${classeBarre ? `<div class="reperes-piste"><div class="reperes-plein ${classeBarre}"></div></div>` : ''}
+    <input type="range" id="${idChamp}" name="${c.id}" min="${VARIATION_MIN}" max="${VARIATION_MAX}" step="1" value="${pct}" data-mds="${c.mds}" data-sens="${c.sens}">
+  </div>`;
+}
+
+/** La page /budget : les postes de la loi de finances deviennent des
+ *  curseurs, le solde se recalcule. Sans JavaScript, le formulaire se
+ *  soumet en GET et le serveur re-rend la même page avec le même calcul
+ *  (serveur/budget.ts, partagé avec web/budget.ts) : les deux chemins
+ *  coïncident au caractère près, comme pour le simulateur de courbe. */
+export function pageBudget(assets: Assets, variations: Variations): string {
+  const be = BUDGET_ETAT;
+  const r = calculeBudget(variations);
+  // Les classes de barres suivent l'ordre de feuilleGraphiques() : les
+  // curseurs reprennent les pistes des Repères, rien n'est retracé.
+  const classesBarre = new Map<string, string>();
+  [...be.depenses, be.autresDepenses].forEach((p, i) => classesBarre.set(p.id!, `rcw-d${i}`));
+  be.recettesFiscales.forEach((p, i) => classesBarre.set(p.id!, `rcw-r${i}`));
+  const pctDe = (c: Curseur): number => variations[c.id] ?? 0;
+  const lignes = (sens: 'dep' | 'rec'): string =>
+    CURSEURS.filter((c) => c.sens === sens)
+      .map((c) => ligneBudget(c, classesBarre.get(c.id) ?? '', pctDe(c)))
+      .join('\n');
+  const contenu = `
+<div class="conteneur">
+  <section class="section">
+    <h1 class="page-titre">Votre budget ${be.année}</h1>
+    <p class="page-sous-titre">Le budget de l’État entre vos mains&nbsp;: un curseur par mission,
+    un par grande recette. Bougez — le solde se recalcule. Les montants sont ceux de la loi&nbsp;;
+    l’arithmétique est la vôtre.</p>
+
+    <form class="bud-formulaire" method="get" action="/budget" data-budget data-solde="${be.soldeMds}">
+      <div class="reperes-sim-resultats">
+        <span>Solde de la loi&nbsp;: <strong>${mdsTexte(be.soldeMds)}</strong></span>
+        <span>Vos dépenses&nbsp;: <strong data-bud-dep>${deltaTexte(r.depensesMds)}</strong></span>
+        <span>Vos recettes&nbsp;: <strong data-bud-rec>${deltaTexte(r.recettesMds)}</strong></span>
+        <span>Votre solde&nbsp;: <strong data-bud-solde>${mdsTexte(r.soldeMds)}</strong></span>
+        <span>Écart avec la loi&nbsp;: <strong data-bud-ecart>${deltaTexte(r.ecartMds)}</strong></span>
+      </div>
+
+      <fieldset class="bud-groupe">
+        <legend>Dépenses — les missions du budget général</legend>
+        <p class="reperes-note">Chaque curseur varie les crédits de la mission, de −100&nbsp;%
+        (suppression) à +100&nbsp;% (doublement). «&nbsp;Autres missions&nbsp;» regroupe les
+        18 autres missions de la loi.</p>
+        <div class="bud-colonnes">${lignes('dep')}
+        </div>
+      </fieldset>
+
+      <fieldset class="bud-groupe">
+        <legend>Recettes — les grandes recettes de l’État</legend>
+        <p class="reperes-note">Recettes fiscales nettes (après remboursements et dégrèvements)
+        et recettes non fiscales. Les prélèvements au profit des collectivités et de l’Union
+        européenne ne sont pas des curseurs&nbsp;: ce sont des transferts, pas des économies.</p>
+        <div class="bud-colonnes">${lignes('rec')}
+        </div>
+      </fieldset>
+
+      <div class="bud-actions">
+        <button class="bouton bouton-secondaire bud-recalculer" type="submit">Recalculer</button>
+        <a href="/budget">Revenir à la loi de finances</a>
+      </div>
+    </form>
+
+    <p class="reperes-note">Arithmétique pure&nbsp;: votre solde part du solde de la loi
+    (${mdsTexte(be.soldeMds)} — budget général, budgets annexes et comptes spéciaux) et chaque
+    point de curseur ajoute ou retire exactement sa part du montant publié. Aucun effet
+    économique n’est modélisé&nbsp;: doubler un impôt ne double pas forcément son rendement,
+    supprimer une mission n’économise pas mécaniquement son montant. Ce n’est pas une prévision.</p>
+    <p class="reperes-note">Montants&nbsp;: ${be.millésime} — les mêmes que la page
+    <a href="/reperes">Repères</a>, qui en donne les sources. Mis à jour à chaque loi de finances.</p>
+  </section>
+
+  <section class="section">
+    <p class="reperes-appel">Un curseur que vous assumeriez&nbsp;? <a href="/proposer">Écrivez
+    l’idée qui va avec</a> — le simulateur vous a déjà donné l’ordre de grandeur de l’arbitrage.</p>
+  </section>
+</div>`;
+  return squelette({
+    titre: `Votre budget ${be.année} — le budget de l’État en curseurs — RatioPol`,
+    description: `Bougez les crédits de chaque mission et les grandes recettes de l’État : le solde se recalcule. Montants de la loi de finances ${be.année}, arithmétique pure, aucune prévision.`,
     contenu,
     assets,
     cssSup: '/graphiques.css',

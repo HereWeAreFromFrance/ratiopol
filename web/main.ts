@@ -9,11 +9,15 @@
 //  · les annonces de visite /_vu (visites.ts, le contrat maison) ;
 //  · le simulateur d'hypothèse sur /reperes (simulateur.ts) : deux
 //    poignées sur la courbe d'évolution, solde recalculé — arithmétique
-//    pure sur des données rendues en attributs par le serveur.
+//    pure sur des données rendues en attributs par le serveur ;
+//  · le simulateur poste par poste sur /budget (budget.ts) : un curseur
+//    par mission et par grande recette, solde recalculé en direct — même
+//    règle, le module pur de l'arithmétique est partagé avec le serveur.
 // Zéro framework, zéro dépendance, un seul fichier bundlé par build.mjs.
 
 import { annoncerVisites } from './visites.ts';
 import { poseSimulateur } from './simulateur.ts';
+import { poseBudget } from './budget.ts';
 
 const BORNES: Record<string, [number, number]> = {
   titre: [12, 140],
@@ -86,4 +90,5 @@ function poseAvis(): void {
 poseCompteurs();
 poseAvis();
 poseSimulateur();
+poseBudget();
 annoncerVisites();

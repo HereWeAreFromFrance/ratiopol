@@ -703,3 +703,65 @@ test('le simulateur affiche le statu quo par défaut, avec sa note de méthode',
     ferme();
   }
 });
+
+test('votre budget : un curseur par poste, recalcul identique sans JavaScript', async () => {
+  const { port, ferme } = await demarre();
+  // ferme() en finally : une assertion qui saute ne doit pas laisser
+  // un serveur ouvert qui ferait pendre toute la suite de tests.
+  try {
+    const page = await requete(port, 'GET', '/budget');
+    assert.equal(page.status, 200);
+    assert.match(page.corps, /Votre budget 2026/);
+    // Un curseur natif par poste : bornes communes, montant de la loi et
+    // côté du solde en attributs — le navigateur n'a aucune valeur à
+    // recopier, il ne fait que de l'arithmétique (web/budget.ts).
+    assert.match(page.corps, /name="etat-defense" min="-100" max="100" step="1" value="0" data-mds="66\.5" data-sens="dep"/);
+    assert.match(page.corps, /name="recette-ir"[^>]*data-mds="99\.8" data-sens="rec"/);
+    assert.match(page.corps, /name="recette-non-fiscales"[^>]*data-sens="rec"/);
+    // Le solde de la loi : en attribut pour le JS, dans la bande au statu
+    // quo pour tout le monde — écart nul, rien bougé.
+    assert.match(page.corps, /data-budget data-solde="-134\.6"/);
+    assert.match(page.corps, /data-bud-solde>[−-]134,6 Md€</);
+    assert.match(page.corps, /data-bud-ecart>0,0 Md€</);
+    // La note de méthode : arithmétique pure, pas une prévision.
+    assert.match(page.corps, /pas une prévision/);
+    // Le secours sans JavaScript : le bouton est rendu par le serveur,
+    // il ne disparaît que si le JS prend la main (classe bud-live).
+    assert.match(page.corps, /Recalculer/);
+    assert.ok(!page.corps.includes('bud-live'));
+
+    // Sans JavaScript : le GET re-rend le calcul du serveur. Même
+    // formule que serveur/budget.ts (partagé avec le navigateur) — la
+    // bande sans JS et le recalcul en direct coïncident par construction.
+    const f = (v) => v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const defense = BUDGET_ETAT.depenses.find((p) => p.id === 'etat-defense');
+    const ir = BUDGET_ETAT.recettesFiscales.find((p) => p.id === 'recette-ir');
+    const dDep = (defense.mds * -50) / 100;
+    const dRec = (ir.mds * 10) / 100;
+    const ecart = dRec - dDep;
+    const sim = await requete(port, 'GET', '/budget?etat-defense=-50&recette-ir=10');
+    assert.equal(sim.status, 200);
+    // Les curseurs restent là où le visiteur les a laissés.
+    assert.match(sim.corps, /name="etat-defense"[^>]*value="-50"/);
+    assert.match(sim.corps, /name="recette-ir"[^>]*value="10"/);
+    assert.match(sim.corps, new RegExp(`data-bud-dep>${f(dDep)} Md€<`));
+    assert.match(sim.corps, new RegExp(`data-bud-rec>\\+${f(dRec)} Md€<`));
+    assert.match(sim.corps, new RegExp(`data-bud-ecart>\\+${f(ecart)} Md€<`));
+    assert.match(sim.corps, new RegExp(`data-bud-solde>${f(BUDGET_ETAT.soldeMds + ecart)} Md€<`));
+
+    // Inconnu ignoré, hors bornes ramené dedans : jamais de page cassée
+    // par un lien trafiqué (même règle que ?vue= sur /reperes).
+    const borne = await requete(port, 'GET', '/budget?etat-justice=250&invente=30');
+    assert.equal(borne.status, 200);
+    assert.match(borne.corps, /name="etat-justice"[^>]*value="100"/);
+    assert.ok(!borne.corps.includes('name="invente"'));
+
+    // La page est joignable : navigation, sitemap, Repères, accueil.
+    assert.match((await requete(port, 'GET', '/')).corps, /href="\/budget"/);
+    assert.match((await requete(port, 'GET', '/reperes')).corps, /href="\/budget"/);
+    assert.match((await requete(port, 'GET', '/sitemap.xml')).corps, /\/budget</);
+
+  } finally {
+    ferme();
+  }
+});

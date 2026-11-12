@@ -1504,3 +1504,97 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
   padding: var(--r-esp-2) var(--r-esp-3);
   gap: var(--r-esp-1) var(--r-esp-4);
 }
+
+/* 13. VOTRE BUDGET --------------------------------------------------------
+   Le simulateur poste par poste (/budget) : une ligne par mission ou grande
+   recette — nom, montant de la loi, variation, barre proportionnelle des
+   Repères, curseur natif. La bande de résultats réutilise
+   .reperes-sim-resultats. Sans JavaScript, le bouton « Recalculer » soumet
+   le formulaire et le serveur rend le même calcul ; quand web/budget.ts a
+   pris la main (classe bud-live), le bouton disparaît — le recalcul est
+   devenu continu. */
+.bud-formulaire {
+  margin: 0;
+}
+
+/* Les groupes (dépenses, recettes) : le fieldset natif, dépouillé de son
+   cadre navigateur — la hiérarchie visuelle portent le titre de page et
+   les légendes, pas des bordures empilées. */
+.bud-groupe {
+  margin: 0 0 var(--r-esp-8);
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.bud-groupe legend {
+  padding: 0;
+  margin-bottom: var(--r-esp-2);
+  font-family: var(--r-police-lecture);
+  font-size: var(--r-txt-xl);
+  font-weight: var(--r-graisse-appuyee);
+  line-height: var(--r-txt-xl-h);
+  color: var(--r-encre);
+}
+
+/* Une colonne sur mobile, deux dès que la place se fait — les lignes sont
+   plus hautes que celles des Repères (le curseur sous la barre). */
+.bud-colonnes {
+  display: grid;
+  gap: 0 var(--r-esp-10);
+}
+
+/* var() n'est pas évalué dans une requête média : le littéral répète
+   --r-ecran-palette (56rem), à tenir à jour avec jetons.css. */
+@media (min-width: 56rem) {
+  .bud-colonnes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.bud-ligne {
+  display: grid;
+  gap: var(--r-esp-2);
+  padding-block: var(--r-esp-3);
+}
+
+.bud-ligne + .bud-ligne {
+  border-top: var(--r-esp-1p) solid var(--r-filet);
+}
+
+/* Le nom du poste est le label du curseur : cliquer le texte saisit le
+   champ, la cible de pouce grandit d'autant. Le lien de thème (class
+   reperes-ligne-theme, partagée avec les Repères) garde sa porte vers les
+   idées sans capturer le clic du label. */
+.bud-ligne label {
+  cursor: pointer;
+}
+
+.bud-curseur,
+.bud-ligne input[type='range'] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--r-accent);
+  cursor: pointer;
+}
+
+/* La variation d'une ligne : alignée sur les montants, chiffres tabulaires
+   (déjà portés par .reperes-ligne-valeur) — elle complète le montant de la
+   loi, ne le remplace pas. */
+.bud-ligne output {
+  font-weight: var(--r-graisse-appuyee);
+  color: var(--r-encre);
+}
+
+.bud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--r-esp-3) var(--r-esp-5);
+}
+
+/* Le recalcul continu a pris la main : le bouton de secours sans
+   JavaScript n'a plus rien à demander. */
+.bud-live .bud-recalculer {
+  display: none;
+}

@@ -409,6 +409,70 @@ await pageAccueilMobile.screenshot({ path: 'captures/accueil-sim-glisser-360.png
 console.log('capture accueil-sim-glisser-360');
 await pageAccueilMobile.close();
 
+// Le simulateur poste par poste (/budget) : sans JavaScript (le bouton
+// « Recalculer » reste, le GET re-rend le calcul du serveur), puis avec —
+// curseurs natifs déplacés, bande relue dans le DOM pour vérifier que le
+// recalcul du navigateur coïncide avec l'arithmétique de budget.ts.
+const litBudget = (page) =>
+  page.evaluate(() =>
+    Object.fromEntries(
+      ['dep', 'rec', 'solde', 'ecart'].map((nom) => [
+        nom,
+        document.querySelector(`[data-bud-${nom}]`)?.textContent ?? 'absent',
+      ]),
+    ),
+  );
+
+for (const [largeur, hauteur] of [[1440, 900], [360, 780]]) {
+  const pageSansJs = await navigateur.newPage();
+  await pageSansJs.setJavaScriptEnabled(false);
+  await pageSansJs.setViewport({ width: largeur, height: hauteur });
+  await pageSansJs.goto(base + '/budget', { waitUntil: 'networkidle0' });
+  await pageSansJs.screenshot({ path: `captures/budget-sans-js-${largeur}.png`, fullPage: true });
+  console.log('capture', `budget-sans-js-${largeur}`);
+  await pageSansJs.close();
+}
+
+// Sans JavaScript, curseurs soumis en GET : le serveur re-rend sa page —
+// Défense −50 %, IR +10 % → écart attendu +43,2 Md€, solde −91,3 Md€
+// (à l'arrondi des montants publiés près).
+const pageGet = await navigateur.newPage();
+await pageGet.setJavaScriptEnabled(false);
+await pageGet.setViewport({ width: 1440, height: 900 });
+await pageGet.goto(base + '/budget?etat-defense=-50&recette-ir=10', { waitUntil: 'networkidle0' });
+console.log('sans JS, GET :', JSON.stringify(await litBudget(pageGet)));
+await pageGet.screenshot({ path: 'captures/budget-sans-js-recalcule-1440.png', fullPage: true });
+console.log('capture budget-sans-js-recalcule-1440');
+await pageGet.close();
+
+// Avec JavaScript : le bouton disparaît (bud-live), les curseurs natifs
+// répondent au clavier — Défense −50 crans, IR +10 crans. Même bande
+// attendue que le GET ci-dessus : les deux calculateurs coïncident.
+const pageBud = await navigateur.newPage();
+await pageBud.setViewport({ width: 1440, height: 900 });
+await pageBud.goto(base + '/budget', { waitUntil: 'networkidle0' });
+const boutonCache = await pageBud.$eval('.bud-recalculer', (b) => getComputedStyle(b).display === 'none');
+if (!boutonCache) throw new Error('le bouton Recalculer doit disparaître une fois le JS posé');
+const defense = await pageBud.$('#bud-etat-defense');
+const ir = await pageBud.$('#bud-recette-ir');
+await defense.evaluate((c) => c.focus());
+for (let i = 0; i < 50; i++) await pageBud.keyboard.press('ArrowLeft');
+await ir.evaluate((c) => c.focus());
+for (let i = 0; i < 10; i++) await pageBud.keyboard.press('ArrowRight');
+console.log('au clavier :', JSON.stringify(await litBudget(pageBud)));
+await pageBud.screenshot({ path: 'captures/budget-clavier-1440.png', fullPage: true });
+console.log('capture budget-clavier-1440');
+await pageBud.close();
+
+// Sombre, statu quo : la page doit rester lisible sans retouche.
+const pageBudSombre = await navigateur.newPage();
+await pageBudSombre.setViewport({ width: 1440, height: 900 });
+await pageBudSombre.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+await pageBudSombre.goto(base + '/budget', { waitUntil: 'networkidle0' });
+await pageBudSombre.screenshot({ path: 'captures/budget-sombre-1440.png', fullPage: true });
+console.log('capture budget-sombre-1440');
+await pageBudSombre.close();
+
 await navigateur.close();
 serveur.close();
 process.exit(0);
