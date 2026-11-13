@@ -347,7 +347,17 @@ test('pages secondaires, recherche, thème, fichiers divers', async () => {
     // série 1 — la légende montrait bleu pour un trait orange.)
     assert.match(feuille.corps, /\.rcc-courbe-d \{ background: var\(--r-serie-1\)/);
     assert.match(feuille.corps, /\.rcc-courbe-r \{ background: var\(--r-serie-2\)/);
-    assert.ok(!reperes.corps.includes('rcc-r0'), 'la légende de courbe ne réutilise plus les classes camembert');
+    // La légende de courbe garde ses classes DÉDIÉES (rcc-courbe-*) : le
+    // bug historique était qu'elle réutilisait la classe camembert rcc-r0.
+    // Les barres des postes, elles, portent désormais légitimement rcc-*
+    // (la couleur de série du poste — barre, camembert, curseur et donut
+    // disent la même couleur).
+    const legendes = reperes.corps.match(/<div class="reperes-courbe-legend">[\s\S]*?<\/div>/g) ?? [];
+    assert.ok(legendes.length >= 1, 'bloc légende de courbe absent');
+    for (const l of legendes) {
+      assert.ok(!l.includes('rcc-r0') && !l.includes('rcc-d0'), 'la légende de courbe réutilise une classe camembert');
+      assert.ok(l.includes('rcc-courbe-'), 'la légende de courbe sans classe dédiée');
+    }
     assert.match(reperes.corps, /<svg/);
     assert.match(reperes.corps, /polyline/);
     assert.match(reperes.corps, /rcw-d0/);
@@ -1043,5 +1053,42 @@ test('une collision de slug retente un nouveau suffixe, sans perdre l\'idée', a
     assert.match((await requete(port, 'GET', r.entetes.location)).corps, /Encadrer les loyers/);
   } finally {
     serveur.close();
+  }
+});
+
+test('la couleur suit l\'entité : barre, curseur et camembert d\'un même poste portent la même série', async () => {
+  const { port, ferme } = await demarre();
+  // ferme() en finally : une assertion qui saute ne doit pas laisser un
+  // serveur ouvert qui ferait pendre toute la suite de tests.
+  try {
+    const feuille = (await requete(port, 'GET', '/graphiques.css')).corps;
+    const reperes = (await requete(port, 'GET', '/reperes')).corps;
+    const budget = (await requete(port, 'GET', '/budget')).corps;
+
+    // Une barre des Repères porte COULEUR (rcc-*) et largeur (rcw-*) de son
+    // poste : Défense (3e mission, index 2) = série 3 partout.
+    assert.match(reperes, /reperes-plein rcc-d2 rcw-d2/);
+    // (les classes rcc-* des barres/camemberts portent background ; les
+    // rcd-*/rcr-* du donut portent fill ET background — deux familles,
+    // une même couleur.)
+    assert.match(feuille, /\.rcc-d2 \{ background: var\(--r-serie-3\); \}/);
+    assert.match(feuille, /\.rcd-2 \{ fill: var\(--r-serie-3\); background: var\(--r-serie-3\); \}/);
+
+    // La ligne de budget du même poste : même barre, même pastille.
+    assert.match(budget, /reperes-plein rcc-d2 rcw-d2/);
+    assert.match(budget, /reperes-point rcd-2/);
+
+    // Le curseur du poste prend la couleur de sa série — règle générée par
+    // poste dans la feuille (jamais d'inline, la CSP l'interdit).
+    assert.match(feuille, /input\[type="range"\]\[name="etat-defense"\] \{ accent-color: var\(--r-serie-3\); \}/);
+    assert.match(feuille, /input\[type="range"\]\[name="recette-ir"\] \{ accent-color: var\(--r-serie-1\); \}/);
+    // Le 7e poste des dépenses (index 6) prend le NEUTRE, comme sa part.
+    assert.match(feuille, /input\[type="range"\]\[name="etat-cohesion-territoires"\] \{ accent-color: var\(--r-serie-neutre\); \}/);
+    // L'accent ne colore plus aucune donnée : plus d'accent-color générique
+    // dans page.css (la feuille seule décide, poste par poste).
+    assert.ok(!budget.includes('accent-color'), 'la page budget ne colore pas les curseurs elle-même');
+
+  } finally {
+    ferme();
   }
 });

@@ -541,3 +541,28 @@ POST publics (impact faible, sans comptes) ; pagination admin au-delà de 500
 idées ; les plafonds par empreinte-du-jour se réinitialisent à minuit (assumé,
 documenté) ; le contenu du site (les premières idées) reste le levier produit
 principal, à Paul.
+
+**Complément (13/11) — « les couleurs doivent être respectées et cohérentes,
+là on n'a que du vert ».** Le retour de Paul visait juste : les barres
+proportionnelles et les curseurs portaient la couleur d'ACCENT (sarcelle)
+— Défense était violette dans le camembert mais verte dans sa barre. La
+règle consignée ici même (« la couleur suit l'entité ») n'était pas tenue
+d'une représentation à l'autre.
+
+**La correction, une seule source de vérité** : `slotSerie(index)` dit le
+slot d'un rang (1..6, puis le neutre) ; `couleurSerie` le traduit en var()
+et la feuille `/graphiques.css` génère une règle accent-color PAR POSTE
+(sélecteur d'attribut `input[type="range"][name="id-stable"]` — jamais
+d'inline, la CSP). Désormais, pour un même poste : la part de camembert,
+le segment du donut, la barre proportionnelle, la pastille de ligne et le
+curseur portent LA MÊME couleur. Les barres des Repères portent les classes
+rcc-* (couleur de série) en plus des rcw-* (largeur) ; page.css n'a plus
+aucun accent-color ni accent en fond de donnée — l'accent sarcelle colore
+les liens, les boutons et les actions, plus jamais une donnée. Un test
+verrouille la chaîne complète (barre du poste = série 3 sur /reperes ET
+/budget, curseur = série 3 dans la feuille, 7e poste au neutre). Chaque
+liste (dépenses, recettes) compte ses slots depuis la série 1, comme son
+camembert — le choix « par liste » du 09/11 n'est pas changé ; un offset
+des recettes (démarrer à la série 2, comme la courbe) reste une option
+si les deux sarcelles adjacents (1re recette / 1re dépense) gênent à
+l'usage.

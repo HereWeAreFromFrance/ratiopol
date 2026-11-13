@@ -1023,7 +1023,11 @@ a.reperes-ligne:hover .reperes-ligne-theme {
 
 .reperes-plein {
   height: 100%;
-  background: var(--r-accent);
+  /* Le fond de la barre vient de la classe de SÉRIE du poste (rcc-* dans
+     /graphiques.css, chargée après celle-ci) : la même couleur que sa part
+     de camembert et sa ligne de budget — l'accent n'est pas une couleur de
+     donnée. Ce fond n'est qu'un filet de secours si la classe manque. */
+  background: var(--r-filet-fort);
   border-radius: inherit;
 }
 
@@ -1574,7 +1578,8 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .bud-ligne input[type='range'] {
   width: 100%;
   margin: 0;
-  accent-color: var(--r-accent);
+  /* accent-color vient de /graphiques.css, par poste : la couleur de la
+     série du curseur est celle de sa barre et de sa pastille. */
   cursor: pointer;
 }
 

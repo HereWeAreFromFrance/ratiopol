@@ -484,7 +484,7 @@ function lignesPostes(postes: Poste[], totalPourPart: number | null, préfixe: s
       const theme = p.theme ? themeParId(p.theme) : undefined;
       const corps = `
   <div class="reperes-ligne-tete"><span class="reperes-ligne-nom">${e(p.nom)}</span><span class="reperes-ligne-valeur">${formatteurMds.format(p.mds)}&nbsp;Md€${part}</span></div>
-  <div class="reperes-piste"><div class="reperes-plein rcw-${préfixe}${i}"></div></div>
+  <div class="reperes-piste"><div class="reperes-plein rcc-${préfixe}${i} rcw-${préfixe}${i}"></div></div>
   ${theme ? `<span class="reperes-ligne-theme">${e(theme.nom)}&nbsp;→</span>` : ''}`;
       if (!theme) return `<div class="reperes-ligne">${corps}
 </div>`;
@@ -521,7 +521,8 @@ function statRepere(libelle: string, valeur: string, detail: string, href?: stri
  *  partagent le neutre « reste ». Chaque part reste nommée et chiffrée en
  *  texte dans la légende : la couleur ne porte jamais l'information seule. */
 function couleurSerie(index: number): string {
-  return index < 6 ? `var(--r-serie-${index + 1})` : 'var(--r-serie-neutre)';
+  const slot = slotSerie(index);
+  return slot === 0 ? 'var(--r-serie-neutre)' : `var(--r-serie-${slot})`;
 }
 
 /** Le disque du camembert : conic-gradient calculé côté serveur. Chaque
@@ -550,6 +551,23 @@ function cameCercle(postes: Poste[]): string {
  *  feuille générée et pas dans page.css (qui ne contient que du design), ni
  *  en attribut style (bloqué par la CSP `default-src 'self'`). Calculée une
  *  fois : les données sont des constantes de module. */
+/** Le slot de série d'un rang : 1..6 pour les six premiers, 0 pour le
+ *  neutre (« reste »). LA source unique — couleurSerie la traduit en
+ *  var(), la feuille des curseurs l'écrit telle quelle. */
+function slotSerie(index: number): number {
+  return index < 6 ? index + 1 : 0;
+}
+
+/** Les curseurs de /budget avec leur slot de série — construit une fois,
+ *  partagé par la feuille de données : le curseur et la barre d'une même
+ *  ligne portent la même couleur que la part du camembert. */
+const CURSEURS_AVEC_SERIE: { id: string; serie: number }[] = [
+  // Chaque liste compte ses slots, comme son camembert : les dépenses
+  // partent de la série 1, les recettes aussi (ce sont deux anneaux).
+  ...[...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses].map((p, i) => ({ id: p.id!, serie: slotSerie(i) })),
+  ...BUDGET_ETAT.recettesFiscales.map((p, i) => ({ id: p.id!, serie: slotSerie(i) })),
+];
+
 let feuilleGraphiquesCache: string | null = null;
 
 export function feuilleGraphiques(): string {
@@ -568,6 +586,13 @@ export function feuilleGraphiques(): string {
   liste('r', BUDGET_ETAT.recettesFiscales);
   liste('s', FINANCES_PUBLIQUES.sousSecteurs);
   liste('a', RECETTES_APU.recettes);
+  // Le CURSEUR de chaque poste prend la couleur de série de sa ligne :
+  // pastille, barre, curseur et part de camembert disent la même couleur.
+  // Sélecteur d'attribut : l'id stable du poste est le name du champ.
+  CURSEURS_AVEC_SERIE.forEach((curseur) => {
+    const couleur = curseur.serie === 0 ? 'var(--r-serie-neutre)' : `var(--r-serie-${curseur.serie})`;
+    règles.push(`input[type="range"][name="${curseur.id}"] { accent-color: ${couleur}; }`);
+  });
   // Le camembert double anneau du simulateur (accueil et /budget) : les
   // SEGMENTS sont des paths SVG, ils se colorent par fill — mêmes séries,
   // même ordre que les camemberts de /reperes (rcc-*). La sixième part des
@@ -1129,7 +1154,7 @@ function ligneBudget(c: Curseur, classeBarre: string, classePoint: string, pct: 
       <span class="reperes-ligne-valeur">${mdsTexte(c.mds)}&nbsp;· <output for="${idChamp}" data-bud-var>${deltaTexte(variationPoste(c, pct))}</output></span>
     </div>
     ${classeBarre ? `<div class="reperes-piste"><div class="reperes-plein ${classeBarre}"></div></div>` : ''}
-    <input type="range" id="${idChamp}" name="${c.id}" min="${VARIATION_MIN}" max="${VARIATION_MAX}" step="1" value="${pct}" data-mds="${c.mds}" data-sens="${c.sens}">
+    <input class="bud-curseur" type="range" id="${idChamp}" name="${c.id}" min="${VARIATION_MIN}" max="${VARIATION_MAX}" step="1" value="${pct}" data-mds="${c.mds}" data-sens="${c.sens}">
   </div>`;
 }
 
@@ -1140,8 +1165,8 @@ function ligneBudget(c: Curseur, classeBarre: string, classePoint: string, pct: 
  *  elles gardent la 6e pastille des recettes. */
 function classesBudget(): Map<string, { barre: string; point: string }> {
   const classes = new Map<string, { barre: string; point: string }>();
-  [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses].forEach((p, i) => classes.set(p.id!, { barre: `rcw-d${i}`, point: `rcd-${i}` }));
-  BUDGET_ETAT.recettesFiscales.forEach((p, i) => classes.set(p.id!, { barre: `rcw-r${i}`, point: `rcr-${i}` }));
+  [...BUDGET_ETAT.depenses, BUDGET_ETAT.autresDepenses].forEach((p, i) => classes.set(p.id!, { barre: `rcc-d${i} rcw-d${i}`, point: `rcd-${i}` }));
+  BUDGET_ETAT.recettesFiscales.forEach((p, i) => classes.set(p.id!, { barre: `rcc-r${i} rcw-r${i}`, point: `rcr-${i}` }));
   classes.set('recette-non-fiscales', { barre: '', point: 'rcr-5' });
   return classes;
 }
