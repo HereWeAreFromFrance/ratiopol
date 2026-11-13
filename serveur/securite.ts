@@ -104,8 +104,13 @@ export function lisCookies(enTete: string | undefined): Map<string, string> {
     const egal = morceau.indexOf('=');
     if (egal === -1) continue;
     const cle = morceau.slice(0, egal).trim();
-    const valeur = decodeURIComponent(morceau.slice(egal + 1).trim());
-    if (cle) resultat.set(cle, valeur);
+    try {
+      const valeur = decodeURIComponent(morceau.slice(egal + 1).trim());
+      if (cle) resultat.set(cle, valeur);
+    } catch {
+      // Un cookie malformé (% isolé…) ne doit pas transformer chaque
+      // requête en 500 : on l'ignore, comme un cookie absent.
+    }
   }
   return resultat;
 }
@@ -149,8 +154,10 @@ export class Limiteur {
 }
 
 /** L'adresse IP derrière nginx : X-Forwarded-For (premier terme) ou la
- * socket. nginx est configuré pour l'écraser proprement (ratiopol.nginx.conf). */
-export function ipDe(req: { headers: Record<string, string | string[] | undefined>; socket: { remoteAddress: string | null } }): string {
+ * socket. nginx est configuré pour ÉCRASER l'en-tête (proxy_params_ratio.conf :
+ * X-Forwarded-For $remote_addr) — sinon un client pourrait se forger une
+ * empreinte et contourner tous les plafonds de rythme. */
+export function ipDe(req: { headers: Record<string, string | string[] | undefined>; socket: { remoteAddress: string | null | undefined } }): string {
   const xff = req.headers['x-forwarded-for'];
   if (typeof xff === 'string' && xff !== '') {
     const premier = xff.split(',')[0]!.trim();

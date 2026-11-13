@@ -1718,3 +1718,58 @@ a.reperes-stat-cliquable:hover .reperes-stat-libelle {
 .impot-live .impot-recalculer {
   display: none;
 }
+
+/* La page idée et la modération : les espacements qui vivaient en styles
+   inline (bloqués par la CSP depuis le jour 1) sont des classes comme les
+   autres. */
+.idee-titre {
+  margin-top: var(--r-esp-4);
+}
+
+.signalement-bloc {
+  margin-top: var(--r-esp-6);
+}
+
+.signalement-bloc summary {
+  cursor: pointer;
+  color: var(--r-encre-douce);
+}
+
+.admin-scroll {
+  overflow-x: auto;
+}
+
+.admin-sous-titre {
+  margin-top: var(--r-esp-6);
+  font-family: var(--r-police-interface);
+  font-size: var(--r-txt-lg);
+  color: var(--r-encre);
+}
+
+.admin-sous-titre-haut {
+  margin-top: var(--r-esp-8);
+}
+
+.admin-actions {
+  display: flex;
+  gap: var(--r-esp-2);
+  flex-wrap: wrap;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--r-txt-sm);
+  margin-top: var(--r-esp-4);
+}
+
+.admin-table thead tr {
+  text-align: left;
+  color: var(--r-encre-douce);
+}
+
+.admin-table td,
+.admin-table th {
+  padding: var(--r-esp-2) var(--r-esp-3);
+  border-bottom: var(--r-esp-1p) solid var(--r-filet);
+}

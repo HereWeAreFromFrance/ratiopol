@@ -17,10 +17,11 @@
 //  · HTML form-encodé seulement : pas de JSON entrant à valider.
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { randomBytes } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { join, normalize } from 'node:path';
 import type { Avis, Depot } from './depot';
-import { JUGEMENTS_ARBITRAGE, POSITIONS } from './depot';
+import { JUGEMENTS_ARBITRAGE, MOTIFS_SIGNALEMENT, POSITIONS } from './depot';
 import { slugDepuisTitre, valideEntree, type ValeursBrutes } from './gabarit';
 import { DepotMemoire } from './depot-memoire';
 import {
@@ -92,6 +93,18 @@ function envoieTexte(res: ServerResponse, code: number, corps: string, type = 't
   res.end(corps);
 }
 
+/** Une page fixe : identique pour tout le monde pendant cinq minutes
+ *  (les seize pages qui ne dépendent d'aucun visiteur ni dépôt). */
+function envoieCache(res: ServerResponse, code: number, corps: string, type = 'text/html; charset=utf-8'): void {
+  enTetesSecurite(res);
+  res.writeHead(code, {
+    'Content-Type': type,
+    'Content-Length': Buffer.byteLength(corps),
+    'Cache-Control': 'public, max-age=300',
+  });
+  res.end(corps);
+}
+
 function redirige(res: ServerResponse, chemin: string): void {
   enTetesSecurite(res);
   res.writeHead(303, { Location: chemin });
@@ -137,7 +150,7 @@ function versBrutes(form: URLSearchParams): ValeursBrutes {
 }
 
 function suffixeAleatoire(): string {
-  return Math.random().toString(36).slice(2, 7);
+  return randomBytes(4).toString('base64url').replace(/[^a-z0-9]/gi, '').slice(0, 5).toLowerCase().padEnd(5, 'x');
 }
 
 async function sertStatique(racine: string, chemin: string, res: ServerResponse): Promise<void> {
@@ -170,6 +183,9 @@ export function creeServeur(opts: OptionsServeur): Server {
   const { depot, sel, empreinteMdpAdmin, assets } = opts;
   const racineStatique = opts.racineStatique ?? join(process.cwd(), 'dist', 'statique');
   const origine = opts.origine ?? '';
+  // Les métadonnées de partage (canonical, Open Graph, Atom) ont besoin de
+  // l'origine publique ; le rendu la garde (valeur de test : vide → relatif).
+  rendu.definitOrigine(origine);
   const maintenant = opts.maintenant ?? Date.now;
 
   // Les plafonds de rythme, par empreinte d'IP.
@@ -181,12 +197,19 @@ export function creeServeur(opts: OptionsServeur): Server {
     connexion: { max: 10, fenetre: 60 * 60 * 1000 },
   } as const;
 
+  /** Sitemap et flux Atom : recalculés au plus une fois par heure. Ce sont
+   *  des constantes à l'échelle humaine (une idée de plus par dépôt), pas
+   *  des pages à la seconde — une requête SQL de moins par robot. */
+  let sitemapCache: { texte: string; le: number } | null = null;
   async function sitemapXml(): Promise<string> {
+    if (sitemapCache && maintenant() - sitemapCache.le < 3600_000) return sitemapCache.texte;
     const idees = await depot.liste({ limite: 100 });
     const urls = idees
       .map((i) => `  <url><loc>${origine}/idee/${i.slug}</loc></url>`)
       .join('\n');
-    return `<?xml version="1.0" encoding="UTF-8"?>
+    sitemapCache = {
+      le: maintenant(),
+      texte: `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${origine}/</loc></url>
   <url><loc>${origine}/proposer</loc></url>
@@ -196,7 +219,17 @@ export function creeServeur(opts: OptionsServeur): Server {
   <url><loc>${origine}/agir</loc></url>
 ${THEMES.map((t) => `  <url><loc>${origine}/theme/${t.id}</loc></url>`).join('\n')}
 ${urls}
-</urlset>`;
+</urlset>`,
+    };
+    return sitemapCache.texte;
+  }
+
+  let atomCache: { texte: string; le: number } | null = null;
+  async function fluxAtom(): Promise<string> {
+    if (atomCache && maintenant() - atomCache.le < 3600_000) return atomCache.texte;
+    const idees = await depot.liste({ limite: 20 });
+    atomCache = { le: maintenant(), texte: rendu.fluxAtom(idees, origine) };
+    return atomCache.texte;
   }
 
   return createServer(async (req, res) => {
@@ -260,7 +293,7 @@ ${urls}
       return;
     }
     if (methode === 'GET' && chemin === '/themes') {
-      envoieTexte(res, 200, rendu.pageThemes(assets));
+      envoieCache(res, 200, rendu.pageThemes(assets));
       return;
     }
     if (methode === 'GET' && chemin.startsWith('/theme/')) {
@@ -281,7 +314,7 @@ ${urls}
       return;
     }
     if (methode === 'GET' && chemin === '/agir') {
-      envoieTexte(res, 200, rendu.pageAgir(assets));
+      envoieCache(res, 200, rendu.pageAgir(assets));
       return;
     }
     if (methode === 'GET' && chemin.startsWith('/idee/')) {
@@ -307,7 +340,7 @@ ${urls}
     // style inline : les valeurs calculées passent par cette feuille même
     // origine, que la page lie dans son head).
     if (methode === 'GET' && chemin === '/graphiques.css') {
-      envoieTexte(res, 200, rendu.feuilleGraphiques(), 'text/css; charset=utf-8');
+      envoieCache(res, 200, rendu.feuilleGraphiques(), 'text/css; charset=utf-8');
       return;
     }
     if (methode === 'GET' && chemin === '/reperes') {
@@ -327,7 +360,10 @@ ${urls}
         ? Math.min(10_000_000, Math.max(0, Math.round(Number(brutRevenu))))
         : 30000;
       const foyer = url.searchParams.get('foyer') === 'couple' ? 'couple' : 'celibataire';
-      envoieTexte(res, 200, rendu.pageReperes(assets, vue, { montant, revenu, foyer }));
+      // Cache court : les pages sans query sont pures (aucune donnée
+      // visiteur) ; les variantes d'outils restent rendues à chaque fois.
+      if (url.search === '') envoieCache(res, 200, rendu.pageReperes(assets, vue, { montant, revenu, foyer }));
+      else envoieTexte(res, 200, rendu.pageReperes(assets, vue, { montant, revenu, foyer }));
       return;
     }
     if (methode === 'GET' && chemin === '/budget') {
@@ -336,19 +372,24 @@ ${urls}
       // vit dans budget.ts, partagée avec le navigateur) ; avec, la même
       // page vit en direct (web/budget.ts). Hors bornes ou inconnu : ignoré,
       // ramené dans les bornes — jamais de page cassée par un lien trafiqué.
-      envoieTexte(res, 200, rendu.pageBudget(assets, litVariations(url.searchParams)));
+      if (url.search === '') envoieCache(res, 200, rendu.pageBudget(assets, litVariations(url.searchParams)));
+      else envoieTexte(res, 200, rendu.pageBudget(assets, litVariations(url.searchParams)));
+      return;
+    }
+    if (methode === 'GET' && chemin === '/flux.xml') {
+      envoieCache(res, 200, await fluxAtom(), 'application/atom+xml; charset=utf-8');
       return;
     }
     if (methode === 'GET' && chemin === '/apropos') {
-      envoieTexte(res, 200, rendu.pageAPropos(assets));
+      envoieCache(res, 200, rendu.pageAPropos(assets));
       return;
     }
     if (methode === 'GET' && chemin === '/moderation') {
-      envoieTexte(res, 200, rendu.pageModeration(assets));
+      envoieCache(res, 200, rendu.pageModeration(assets));
       return;
     }
     if (methode === 'GET' && chemin === '/mentions') {
-      envoieTexte(res, 200, rendu.pageMentions(assets));
+      envoieCache(res, 200, rendu.pageMentions(assets));
       return;
     }
 
@@ -380,8 +421,19 @@ ${urls}
         envoieTexte(res, 422, rendu.pageProposer(assets, brutes, erreurs));
         return;
       }
-      const slug = `${slugDepuisTitre(entree.titre)}-${suffixeAleatoire()}`;
-      const idee = await depot.cree({ ...entree, slug }, empreinte);
+      // La base impose l'unicité du slug : une collision (rare) ne doit
+      // pas perdre l'idée qu'un visiteur vient d'écrire — nouveau suffixe,
+      // trois essais. Le suffixe vient du générateur cryptographique.
+      let idee: Awaited<ReturnType<typeof depot.cree>> | null = null;
+      for (let essai = 0; essai < 3 && !idee; essai++) {
+        const slug = `${slugDepuisTitre(entree.titre)}-${suffixeAleatoire()}`;
+        try {
+          idee = await depot.cree({ ...entree, slug }, empreinte);
+        } catch (e) {
+          if (essai === 2) throw e;
+        }
+      }
+      if (!idee) throw new Error('slug impossible');
       if (veJ) {
         enTetesSecurite(res);
         res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -445,7 +497,11 @@ ${urls}
         return;
       }
       try {
-        await depot.signale(slug, (form.get('motif') ?? 'Autre').slice(0, 100), (form.get('message') ?? '').slice(0, 1000));
+        // Le motif vient de la liste fermée (le select l'affiche) : un
+        // motif trafiqué retombe sur « Autre », jamais de texte libre ici.
+        const brut = form.get('motif') ?? '';
+        const motif = MOTIFS_SIGNALEMENT.find((m) => m === brut) ?? 'Autre';
+        await depot.signale(slug, motif, (form.get('message') ?? '').slice(0, 1000));
       } catch {
         envoieTexte(res, 404, rendu.page404(assets));
         return;

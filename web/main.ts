@@ -24,30 +24,26 @@ import { poseSimulateur } from './simulateur.ts';
 import { poseBudget } from './budget.ts';
 import { poseGrandeurs } from './grandeur.ts';
 import { poseImpot } from './impot.ts';
+// Les bornes viennent du module pur du gabarit — LE MÊME que le serveur
+// juge : un compteur ne peut plus mentir parce qu'une borne a bougé d'un
+// côté et pas de l'autre.
+import { BORNES } from '../serveur/gabarit.ts';
 
-const BORNES: Record<string, [number, number]> = {
-  titre: [12, 140],
-  probleme: [60, 2000],
-  proposition: [60, 2000],
-  beneficiaires: [20, 600],
-  arbitrage: [20, 1000],
-  indicateur: [10, 400],
-  pseudo: [3, 40],
-};
+const bornes: Record<string, readonly [number, number]> = BORNES;
 
 function poseCompteurs(): void {
   for (const champ of document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[data-compteur]')) {
     const nom = champ.name;
-    const bornes = BORNES[nom];
+    const bornesChamp = bornes[nom];
     const compteur = champ.parentElement?.querySelector<HTMLElement>('.compteur-caracteres');
-    if (!bornes || !compteur) continue;
+    if (!bornesChamp || !compteur) continue;
 
     const maj = (): void => {
       const n = champ.value.trim().length;
-      compteur.textContent = `${n} / ${bornes[1]}`;
+      compteur.textContent = `${n} / ${bornesChamp[1]}`;
       // La couleur d'alerte n'apparaît que SOUS le minimum : on encourage,
       // on ne gronde pas avant qu'il y ait quelque chose à dire.
-      compteur.dataset.proche = n > 0 && n < bornes[0] ? 'vrai' : 'faux';
+      compteur.dataset.proche = n > 0 && n < bornesChamp[0] ? 'vrai' : 'faux';
     };
     champ.addEventListener('input', maj);
     maj();

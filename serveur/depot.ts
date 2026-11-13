@@ -110,6 +110,8 @@ export interface Depot {
   donneAvis(slug: string, empreinte: string, avis: Avis): Promise<Decompte>;
   /** L'avis déjà donné par cette empreinte, pour l'afficher. */
   avisDe(slug: string, empreinte: string): Promise<Avis | null>;
+  /** Enregistre un signalement ; rejette si l'idée est inconnue OU masquée
+   *  (on ne pollue pas la file de modération avec une idée invisible). */
   signale(slug: string, motif: string, message: string): Promise<void>;
   /** Tout ce que voit la modération : y compris les idées masquées. */
   pourAdmin(): Promise<VoirAdmin>;

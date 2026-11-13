@@ -63,17 +63,40 @@ function e(s: string): string {
 /* Squelette                                                          */
 /* ------------------------------------------------------------------ */
 
+/** L'origine publique (https://ratiopol.fr), posée par creeServeur : les
+ *  métadonnées de partage en ont besoin ; vide (tests, dev) → chemins
+ *  relatifs dans les liens. */
+let originePublique = '';
+export function definitOrigine(origine: string): void {
+  originePublique = origine;
+}
+
 function squelette(opts: {
   titre: string;
   description: string;
   contenu: string;
   assets: Assets;
+  /** Le chemin canonique de la page, sans query (ex. '/reperes') : les
+   *  variantes d'affichage (?vue=, ?tri=, ?merci=1) ne créent pas des
+   *  pages distinctes pour les moteurs. Absent = canonical omise. */
+  chemin?: string;
   corpsSup?: string;
   /** Feuille CSS supplémentaire, même origine (la CSP interdit le style
    *  inline, pas une feuille servie par le site lui-même). */
   cssSup?: string;
 }): string {
-  const { titre, description, contenu, assets, cssSup } = opts;
+  const { titre, description, contenu, assets, cssSup, chemin } = opts;
+  const absolue = (chemin: string): string => (originePublique ? `${originePublique}${chemin}` : chemin);
+  const metasPartage = chemin
+    ? `<link rel="canonical" href="${e(absolue(chemin))}">
+<link rel="alternate" type="application/atom+xml" href="/flux.xml" title="Dernières idées">
+<meta property="og:site_name" content="RatioPol">
+<meta property="og:title" content="${e(titre)}">
+<meta property="og:description" content="${e(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${e(absolue(chemin))}">
+<meta property="og:locale" content="fr_FR">`
+    : '<link rel="alternate" type="application/atom+xml" href="/flux.xml" title="Dernières idées">';
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -81,6 +104,7 @@ function squelette(opts: {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${e(titre)}</title>
 <meta name="description" content="${e(description)}">
+${metasPartage}
 <link rel="stylesheet" href="${e(assets.css)}">
 ${cssSup ? `<link rel="stylesheet" href="${e(cssSup)}">` : ''}
 <link rel="icon" href="/statique/favicon.svg" type="image/svg+xml">
@@ -111,6 +135,34 @@ ${contenu}
 <script src="${e(assets.js)}" defer></script>
 </body>
 </html>`;
+}
+
+/** Le flux Atom des vingt dernières idées : la bouche-oreille s'abonne,
+ *  chaque entrée mène à l'URL propre de l'idée. Date au format RFC 3339. */
+export function fluxAtom(idees: Idee[], origine: string): string {
+  const horodatage = (d: Date): string => d.toISOString();
+  const entrees = idees
+    .map(
+      (i) => `  <entry>
+    <title>${e(i.titre)}</title>
+    <link href="${e(origine)}/idee/${e(i.slug)}"/>
+    <id>${e(origine)}/idee/${e(i.slug)}</id>
+    <updated>${horodatage(i.creeeLe)}</updated>
+    <author><name>${e(i.pseudo)}</name></author>
+    <summary>${e(i.proposition.slice(0, 300))}</summary>
+  </entry>`
+    )
+    .join('\n');
+  const miseAJour = idees[0] ? horodatage(idees[0].creeeLe) : horodatage(new Date());
+  return `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>RatioPol — des idées concrètes, pas des slogans</title>
+  <link href="${e(origine)}/"/>
+  <link href="${e(origine)}/flux.xml" rel="self"/>
+  <id>${e(origine)}/</id>
+  <updated>${miseAJour}</updated>
+${entrees}
+</feed>`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -240,6 +292,7 @@ export function pageAccueil(recentes: Idee[], soutenues: Idee[], assets: Assets)
   </section>
 </div>`;
   return squelette({
+    chemin: '/',
     titre: 'RatioPol — des idées concrètes, pas des slogans',
     description: 'Partagez et lisez des propositions politiques concrètes, anonymement ou non. Ouvert à tous en France.',
     contenu,
@@ -275,6 +328,7 @@ export function pageThemes(assets: Assets): string {
   </section>
 </div>`;
   return squelette({
+    chemin: '/themes',
     titre: 'Thèmes — RatioPol',
     description: `Les idées citoyennes classées en ${THEMES.length - 1} thèmes : logement, santé, énergie, budget, services publics, intelligence artificielle…`,
     contenu,
@@ -379,6 +433,7 @@ export function pageTheme(idTheme: string, idees: Idee[], tri: 'recent' | 'soute
   </section>` : ''}
 </div>`;
   return squelette({
+    chemin: `/theme/${idTheme}`,
     titre: `${nom} — chiffres, qui décide, idées — RatioPol`,
     description: `${nom} : les chiffres officiels, qui décide et les idées citoyennes concrètes. ${theme ? theme.accroche : ''}.`,
     contenu,
@@ -403,6 +458,7 @@ export function pageAgir(assets: Assets): string {
   </section>
 </div>`;
   return squelette({
+    chemin: '/agir',
     titre: 'Comment agir — pétitions, élus, consultations — RatioPol',
     description: 'Les voies officielles pour porter une idée politique : pétitions de l’Assemblée et du Sénat, élus, consultations publiques, référendum d’initiative partagée.',
     contenu,
@@ -730,9 +786,9 @@ function courbeDette(): string {
 function simBlocÉvolution(compact = false): string {
   const ev = ÉVOLUTION;
   const dernier = ev.années.length - 1;
-  const année = ev.années[dernier];
-  const dep = ev.dépensesPib[dernier];
-  const rec = ev.recettesPib[dernier];
+  const année = ev.années[dernier]!;
+  const dep = ev.dépensesPib[dernier]!;
+  const rec = ev.recettesPib[dernier]!;
   const solde = rec - dep;
   // Au statu quo, l'écart avec l'année publiée est nul par construction —
   // la formule reste exactement celle que le navigateur appliquera ensuite.
@@ -897,7 +953,7 @@ ${sectionImpot}
   <section class="section">
     <div class="section-titre"><h2>Budget de l’État — recettes (${be.année})</h2></div>
     <p class="reperes-note">Recettes fiscales «&nbsp;nettes&nbsp;»&nbsp;: comptées après
-    remboursements et dégrèvements d’impôts (${formatteurMds.format(be.depenses[0].mds)}&nbsp;Md€,
+    remboursements et dégrèvements d’impôts (${formatteurMds.format(be.depenses[0]!.mds)}&nbsp;Md€,
     inscrits en dépenses ci-dessus).</p>
     <div class="reperes-recettes">
       <div>
@@ -954,7 +1010,7 @@ ${sectionImpot}
     </div>
     ${courbeDette()}
     <p class="reperes-note">La dette au 31/12 de chaque année (tableau 3.101, comptes nationaux).
-    Fin ${ev.années[ev.années.length - 1]}&nbsp;: ${formatteurMds.format(ev.dettePib[ev.dettePib.length - 1])}&nbsp;% du PIB —
+    Fin ${ev.années.at(-1)}&nbsp;: ${formatteurMds.format(ev.dettePib.at(-1)!)}&nbsp;% du PIB —
     le point trimestriel au ${fp.detteDate} (${formatteurMds.format(fp.dettePib)}&nbsp;%) reste dans
     «&nbsp;L’essentiel&nbsp;»&nbsp;: deux dates officielles, deux usages.</p>
     <details class="reperes-table-details">
@@ -965,7 +1021,7 @@ ${sectionImpot}
           <tbody>
             ${ev.années
               .map(
-                (a, i) => `<tr><th>${a}</th><td>${formatteurMds.format(ev.dépensesPib[i])}</td><td>${formatteurMds.format(ev.recettesPib[i])}</td><td>${formatteurMds.format(ev.dépensesMds[i])}</td><td>${formatteurMds.format(ev.recettesMds[i])}</td><td>${formatteurMds.format(ev.dettePib[i])}</td><td>${formatteurMds.format(ev.detteMds[i])}</td></tr>`
+                (a, i) => `<tr><th>${a}</th><td>${formatteurMds.format(ev.dépensesPib[i]!)}</td><td>${formatteurMds.format(ev.recettesPib[i]!)}</td><td>${formatteurMds.format(ev.dépensesMds[i]!)}</td><td>${formatteurMds.format(ev.recettesMds[i]!)}</td><td>${formatteurMds.format(ev.dettePib[i]!)}</td><td>${formatteurMds.format(ev.detteMds[i]!)}</td></tr>`
               )
               .join('\n')}
           </tbody>
@@ -1041,6 +1097,7 @@ ${sectionImpot}
   </section>
 </div>`;
   return squelette({
+    chemin: '/reperes',
     titre: 'Repères — les chiffres officiels des finances publiques — RatioPol',
     description:
       'Budget de l’État et finances publiques de la France : dépenses, recettes, déficit, dette, évolution. Chiffres officiels, sourcés et datés, sans commentaire.',
@@ -1282,6 +1339,7 @@ export function pageBudget(assets: Assets, variations: Variations): string {
   </section>
 </div>`;
   return squelette({
+    chemin: '/budget',
     titre: `Votre budget ${be.année} — le budget de l’État en curseurs — RatioPol`,
     description: `Bougez les crédits de chaque mission et les grandes recettes de l’État : le solde se recalcule. Montants de la loi de finances ${be.année}, arithmétique pure, aucune prévision.`,
     contenu,
@@ -1373,7 +1431,7 @@ export function pageIdee(idee: Idee, sonAvis: Avis | null, merci: boolean, asset
     <span class="badge-theme">${e(theme ? theme.nom : idee.theme)}</span>
     <span class="carte-idee-meta"><span>${e(niveau ? niveau.nom : idee.niveau)} · ${e(idee.pseudo)} · ${e(dateFr(idee.creeeLe))}</span></span>
   </div>
-  <h1 class="page-titre" style="margin-top:var(--r-esp-4)">${e(idee.titre)}</h1>
+  <h1 class="page-titre idee-titre">${e(idee.titre)}</h1>
   <div class="idee-corps">
     ${bloc('Le problème constaté', idee.probleme)}
     ${bloc('La proposition', idee.proposition)}
@@ -1384,8 +1442,8 @@ export function pageIdee(idee: Idee, sonAvis: Avis | null, merci: boolean, asset
   </div>
   ${sectionAvis(idee, sonAvis)}
   ${merci ? '<p class="champ-erreur" role="status">Signalement enregistré — merci. La modération le lira.</p>' : ''}
-  <details style="margin-top:var(--r-esp-6)">
-    <summary style="cursor:pointer;color:var(--r-encre-douce)">Signaler cette idée</summary>
+  <details class="signalement-bloc">
+    <summary>Signaler cette idée</summary>
     <form class="formulaire" method="post" action="/idee/${e(idee.slug)}/signalement">
       <div class="champ">
         <label for="motif">Motif</label>
@@ -1400,6 +1458,7 @@ export function pageIdee(idee: Idee, sonAvis: Avis | null, merci: boolean, asset
   </details>
 </article>`;
   return squelette({
+    chemin: `/idee/${idee.slug}`,
     titre: `${idee.titre} — RatioPol`,
     description: idee.proposition.slice(0, 200),
     contenu,
@@ -1422,15 +1481,13 @@ function champTexte(opts: {
   aide: string;
   erreur?: string;
   valeur: string;
-  type?: 'text' | 'email';
   tailleMax: number;
 }): string {
-  const type = opts.type ?? 'text';
   return `<div class="champ">
   <label for="${opts.nom}">${e(opts.libelle)}</label>
   <span class="aide">${e(opts.aide)}</span>
   ${opts.erreur ? `<p class="champ-erreur" role="alert">${e(opts.erreur)}</p>` : ''}
-  <input id="${opts.nom}" name="${opts.nom}" type="${type}" value="${opts.valeur}" maxlength="${opts.tailleMax}"
+  <input id="${opts.nom}" name="${opts.nom}" type="text" value="${opts.valeur}" maxlength="${opts.tailleMax}"
          ${opts.nom === 'titre' ? 'required' : ''} data-compteur>
   <span class="compteur-caracteres"></span>
 </div>`;
@@ -1548,6 +1605,7 @@ export function pageProposer(assets: Assets, valeurs?: ValeursBrutes, erreurs?: 
   </section>
 </div>`;
   return squelette({
+    chemin: '/proposer',
     titre: 'Proposer une idée — RatioPol',
     description: 'Publiez une proposition politique concrète : problème, proposition, bénéficiaires, arbitrage.',
     contenu,
@@ -1600,6 +1658,7 @@ export function pageAPropos(assets: Assets): string {
   </section>
 </div>`;
   return squelette({
+    chemin: '/apropos',
     titre: 'À propos — RatioPol',
     description: 'RatioPol : un lieu gratuit, indépendant et sans publicité pour les idées politiques concrètes.',
     contenu,
@@ -1632,6 +1691,7 @@ export function pageModeration(assets: Assets): string {
   </section>
 </div>`;
   return squelette({
+    chemin: '/moderation',
     titre: 'Modération — RatioPol',
     description: 'Règles de modération de RatioPol : on critique des actes et des idées, jamais des personnes.',
     contenu,
@@ -1677,6 +1737,7 @@ export function pageMentions(assets: Assets): string {
   </section>
 </div>`;
   return squelette({
+    chemin: '/mentions',
     titre: 'Mentions & données — RatioPol',
     description: 'Mentions légales, données personnelles (RGPD art. 9) et licence CC BY 4.0 des idées publiées.',
     contenu,
@@ -1726,7 +1787,7 @@ export function pageAdmin(vue: { idees: Idee[]; signalements: Signalement[] }, a
   <td>${e(themeParId(i.theme)?.nom ?? i.theme)}</td>
   <td>${i.avis.pour} / ${i.avis.contre} / ${i.avis.sansAvis}</td>
   <td>${i.avis.arbComplet} / ${i.avis.arbPartiel} / ${i.avis.arbIncomplet}</td>
-  <td style="display:flex;gap:var(--r-esp-2);flex-wrap:wrap">
+  <td class="admin-actions">
     ${action}
     <form method="post" action="/admin/idee/${i.id}/supprimer"><button class="bouton bouton-secondaire">Supprimer</button></form>
   </td>
@@ -1739,14 +1800,14 @@ export function pageAdmin(vue: { idees: Idee[]; signalements: Signalement[] }, a
     .join('\n');
 
   const contenu = `
-<div class="conteneur" style="overflow-x:auto">
+<div class="conteneur admin-scroll">
   <section class="section">
     <h1 class="page-titre">Modération</h1>
-    <h2 style="margin-top:var(--r-esp-6)">Signalements à lire</h2>
+    <h2 class="admin-sous-titre">Signalements à lire</h2>
     ${signalements === '' ? '<p class="page-sous-titre">Aucun signalement.</p>' : `<ul class="liste-simple">${signalements}</ul>`}
-    <h2 style="margin-top:var(--r-esp-8)">Idées (${vue.idees.length})</h2>
-    <table style="width:100%;border-collapse:collapse;font-size:var(--r-txt-sm);margin-top:var(--r-esp-4)">
-      <thead><tr style="text-align:left;color:var(--r-encre-douce)">
+    <h2 class="admin-sous-titre admin-sous-titre-haut">Idées (${vue.idees.length})</h2>
+    <table class="admin-table">
+      <thead><tr>
         <th>Idée</th><th>Pseudo</th><th>Thème</th><th>D’accord / pas / sans avis</th><th>Arbitrage complet / partiel / incomplet</th><th>Actions</th>
       </tr></thead>
       <tbody>${lignes}</tbody>

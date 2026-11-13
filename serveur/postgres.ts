@@ -186,10 +186,14 @@ export class DepotPg implements Depot {
   }
 
   async signale(slug: string, motif: string, message: string): Promise<void> {
-    await this.sql`
+    // Rejette si l'idée est inconnue OU masquée (RETURNING rend le silence
+    // observable : aucune ligne insérée = erreur pour la route).
+    const posees = await this.sql<{ idee_id: number | bigint }[]>`
       INSERT INTO signalements (idee_id, motif, message)
-      SELECT id, ${motif}, ${message} FROM idees WHERE slug = ${slug}
+      SELECT id, ${motif}, ${message} FROM idees WHERE slug = ${slug} AND statut = 'publiee'
+      RETURNING idee_id
     `;
+    if (posees.length === 0) throw new Error('idée inconnue ou masquée');
   }
 
   async pourAdmin(): Promise<VoirAdmin> {

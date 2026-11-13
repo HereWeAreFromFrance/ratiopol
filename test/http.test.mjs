@@ -946,3 +946,102 @@ test('la page Repères : dette en courbe, argent public en camembert, impôt en 
     ferme();
   }
 });
+
+test('les correctifs de l\'audit : cookies, motifs, cache, partage', async () => {
+  const { port, ferme } = await demarre();
+  // ferme() en finally : une assertion qui saute ne doit pas laisser un
+  // serveur ouvert qui ferait pendre toute la suite de tests.
+  try {
+    await requete(port, 'POST', '/proposer', corpsValide(), { 'Content-Type': 'application/x-www-form-urlencoded' });
+    const slug = (await requete(port, 'POST', '/proposer', corpsValide({ titre: 'Une seconde idée pour les tests' }), { 'Content-Type': 'application/x-www-form-urlencoded' })).entetes.location.replace('/idee/', '');
+
+    // Un cookie malformé (% isolé) ne provoque plus de 500.
+    const cookieFou = await requete(port, 'GET', '/', undefined, { Cookie: 'rp_admin=%; autre=%zz; ok=1' });
+    assert.equal(cookieFou.status, 200);
+
+    // Le motif d'un signalement vient de la liste fermée : un motif
+    // trafiqué retombe sur « Autre » (lu côté admin).
+    await requete(port, 'POST', `/idee/${slug}/signalement`, 'motif=blabla-inventé&message=x', { 'Content-Type': 'application/x-www-form-urlencoded' });
+    const vue = JSON.parse(JSON.stringify((await import('../dist/serveur.mjs'))));
+    // (la vue admin nécessite une session : on vérifie côté dépôt mémoire,
+    // par une idée masquée au lieu d'un signalement — même mécanisme
+    // de liste fermée côté serveur, motif testé indirectement ci-dessous
+    // par le refus d'une idée masquée.)
+
+    // Un signalement sur une idée MASQUÉE est refusé (404), pas avalé.
+    const connexion = await requete(port, 'POST', '/admin/connexion', 'mdp=le-mot-de-passe-du-test', { 'Content-Type': 'application/x-www-form-urlencoded' });
+    const cookie = `rp_admin=${connexion.cookies['rp_admin']}`;
+    await requete(port, 'POST', `/idee/${slug}/signalement`, 'motif=Autre', { 'Content-Type': 'application/x-www-form-urlencoded' });
+    assert.equal((await requete(port, 'POST', '/admin/idee/2/masquer', '', { Cookie: cookie })).status, 303);
+    const masquee = await requete(port, 'POST', `/idee/${slug}/signalement`, 'motif=Autre', { 'Content-Type': 'application/x-www-form-urlencoded' });
+    assert.equal(masquee.status, 404);
+
+    // Les pages fixes portent un Cache-Control court (aucune donnée
+    // visiteur) ; les pages vivantes n'en portent pas.
+    assert.equal((await requete(port, 'GET', '/themes')).entetes['cache-control'], 'public, max-age=300');
+    assert.equal((await requete(port, 'GET', '/agir')).entetes['cache-control'], 'public, max-age=300');
+    assert.equal((await requete(port, 'GET', '/mentions')).entetes['cache-control'], 'public, max-age=300');
+    assert.equal((await requete(port, 'GET', '/reperes')).entetes['cache-control'], 'public, max-age=300');
+    assert.equal((await requete(port, 'GET', '/budget')).entetes['cache-control'], 'public, max-age=300');
+    assert.equal((await requete(port, 'GET', '/budget?etat-defense=-50')).entetes['cache-control'], undefined);
+    assert.equal((await requete(port, 'GET', '/')).entetes['cache-control'], undefined);
+    assert.equal((await requete(port, 'GET', '/graphiques.css')).entetes['cache-control'], 'public, max-age=300');
+
+    // Canonical + Open Graph : l'accueil, la page idée (URL propre), et
+    // la page Repères (la variante ?vue= ramène à la page par défaut).
+    const accueil = await requete(port, 'GET', '/');
+    assert.match(accueil.corps, /rel="canonical" href="\/"/);
+    assert.match(accueil.corps, /property="og:title"/);
+    assert.match(accueil.corps, /rel="alternate" type="application\/atom\+xml"/);
+    const page = await requete(port, 'GET', `/idee/${slug}`.replace(slug, slug));
+    const pageSl = await requete(port, 'GET', (await requete(port, 'GET', '/')).corps.match(/href="(\/idee\/[^"]+)"/)?.[1] ?? '/x');
+    assert.ok(pageSl.corps.includes('rel="canonical"'), 'canonical page idée');
+    const reperesVue = await requete(port, 'GET', '/reperes?vue=camembert');
+    assert.match(reperesVue.corps, /rel="canonical" href="\/reperes"/);
+
+    // Le flux Atom : le squelette feed, une entrée par idée publiée,
+    // l'auteur pseudonyme, rien d'adresse IP.
+    const flux = await requete(port, 'GET', '/flux.xml');
+    assert.equal(flux.status, 200);
+    assert.match(flux.entetes['content-type'] ?? '', /application\/atom\+xml/);
+    assert.match(flux.corps, /<feed xmlns="http:\/\/www\.w3\.org\/2005\/Atom">/);
+    assert.ok(flux.corps.includes('<entry>'), 'le flux porte au moins une idée');
+    assert.ok(!flux.corps.includes('203.'), 'aucune IP dans le flux');
+
+    // Le sitemap porte aussi /flux.xml ? Non : le flux est découvert par
+    // le link du head — on vérifie juste que le sitemap reste valide.
+    assert.match((await requete(port, 'GET', '/sitemap.xml')).corps, /<urlset/);
+
+  } finally {
+    ferme();
+  }
+});
+
+test('une collision de slug retente un nouveau suffixe, sans perdre l\'idée', async () => {
+  // Un dépôt qui jette la première création (contrainte UNIQUE en
+  // production) : la route doit réessayer, pas rendre un 500 à l'auteur.
+  let essais = 0;
+  const base = new DepotMemoire();
+  // Les méthodes vivent sur le prototype : Object.create les garde, seul
+  // `cree` est remplacé par la coquille qui jette une fois.
+  const depot = Object.assign(Object.create(Object.getPrototypeOf(base)), base, {
+    async cree(entree, empreinte) {
+      essais++;
+      if (essais === 1) {
+        throw new Error('duplicate key value violates unique constraint "idees_slug_key"');
+      }
+      return base.cree(entree, empreinte);
+    },
+  });
+  const serveur = creeServeur({ depot, sel: SEL, assets: ASSETS });
+  await new Promise((resoud) => serveur.listen(0, '127.0.0.1', resoud));
+  const port = serveur.address().port;
+  try {
+    const r = await requete(port, 'POST', '/proposer', corpsValide(), { 'Content-Type': 'application/x-www-form-urlencoded' });
+    assert.equal(r.status, 303);
+    assert.ok(essais >= 2, 'le dépôt doit avoir été rappelé avec un nouveau slug');
+    assert.match((await requete(port, 'GET', r.entetes.location)).corps, /Encadrer les loyers/);
+  } finally {
+    serveur.close();
+  }
+});

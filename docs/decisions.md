@@ -482,3 +482,62 @@ l'inflation.
 
 Un demi-siècle de comptes publics tient désormais sur une page, et chaque
 série — courte ou longue — garde sa couleur.
+
+## 2026-11-13 — L'audit complet et ses correctifs
+
+Paul : « fais un audit complet du code et vois tout ce qu'on peut améliorer »,
+puis « fais la totalité ». L'audit a couvert les 14 fichiers serveur, le front,
+la conf nginx, les migrations et les tests. Tout ce qui suit est corrigé et
+testé (31 tests + typecheck).
+
+**Les trous trouvés (et fermés)** :
+1. **Spoofing de l'empreinte IP** — `X-Forwarded-For $proxy_add_x_forwarded_for`
+   AJOUTE au lieu d'écraser : le premier terme, que `ipDe()` lit, était choisi
+   par le client → tous les plafonds de rythme contournables, y compris les
+   essais de mot de passe admin (que nginx ne dose pas). Correctif :
+   `X-Forwarded-For $remote_addr` (un seul proxy devant) + la conf est poussée
+   sur le VPS avec contrôle. Le commentaire de `ipDe` dit maintenant la règle.
+2. **`/idee/<slug>/avis` avait échappé au dosage nginx** (la regex citait
+   soutien|signalement depuis avant la migration) → avis ajouté au bloc
+   d'écritures.
+3. **Un cookie malformé (`%` isolé) provoquait un 500** sur toute requête —
+   `lisCookies` ignore désormais les valeurs indécodables.
+4. **Une collision de slug rendait un 500** à l'auteur (contrainte UNIQUE en
+   base) — la route retente trois suffixes tirés du générateur
+   cryptographique (`randomBytes` remplace `Math.random`), testé avec un dépôt
+   qui jette une fois.
+5. **Le motif de signalement était du texte libre** malgré le select à liste
+   fermée — validé contre `MOTIFS_SIGNALEMENT`, trafiqué → « Autre ».
+6. **On pouvait signaler une idée masquée** — les deux dépôts rejettent
+   désormais inconnue OU masquée (contrat écrit dans depot.ts), route → 404.
+
+**Fiabilité** : `tsc --noEmit` dans `npm test` — esbuild transpile sans
+vérifier les types, 29 erreurs latentes traînaient (indexations strictes,
+option `allowImportingTsExtensions`) : toutes corrigées, le typecheck
+reste dans la suite. Les `BORNES` des compteurs viennent maintenant du
+module pur du gabarit (le même que le juge serveur) — la duplication
+copiée à la main pouvait mentir après une évolution ; le bundle ne grossit
+pas d'un octet (tree-shaking). Les styles inline bloqués par la CSP depuis
+le jour 1 (page idée, table admin) sont des classes ; le paramètre `email`
+mort de champTexte est parti.
+
+**Performance** : `Cache-Control public, max-age=300` sur les pages sans
+aucune donnée visiteur ni dépôt (repères, budget au statu quo, thèmes,
+agir, à propos, modération-règle, mentions, feuille de graphiques) ;
+les pages vivantes (accueil, idées, recherche, variantes d'outils) restent
+dynamiques. Sitemap et flux Atom rendus au plus une fois par heure.
+`gzip_types` couvre enfin `text/javascript` — les bundles étaient servis
+sans compression par nginx.
+
+**Partage** : `rel="canonical"` sur chaque page publique (les variantes
+?vue=, ?tri=, ?merci= ne créent pas des pages distinctes), Open Graph
+complet (titre, description, URL, site_name, locale — l'image de partage
+reste à dessiner, un PNG à faire à la main), et un flux Atom des vingt
+dernières idées (`/flux.xml`, découvert par le link du head, caché 1 h).
+L'origine publique est injectée dans le rendu par creeServeur.
+
+**Resté hors périmètre, noté** : image Open Graph à dessiner ; CSRF sur les
+POST publics (impact faible, sans comptes) ; pagination admin au-delà de 500
+idées ; les plafonds par empreinte-du-jour se réinitialisent à minuit (assumé,
+documenté) ; le contenu du site (les premières idées) reste le levier produit
+principal, à Paul.

@@ -46,8 +46,8 @@ export function poseSimulateur(): void {
     const pib = Number(d.pibMds);
     const depSérie = (d.dep ?? '').split(',').map(Number);
     const recSérie = (d.rec ?? '').split(',').map(Number);
-    const depRéf = depSérie[depSérie.length - 1];
-    const recRéf = recSérie[recSérie.length - 1];
+    const depRéf = depSérie.at(-1)!;
+    const recRéf = recSérie.at(-1)!;
     const annéeHypothèse = Number((d.annees ?? '').split(',').pop()) + 1;
     if (Number.isNaN(min) || Number.isNaN(pib) || Number.isNaN(depRéf) || Number.isNaN(recRéf) || Number.isNaN(annéeHypothèse)) continue;
 
@@ -64,8 +64,8 @@ export function poseSimulateur(): void {
     const maj = (): void => {
       if (poignées.length < 2) return;
       écrireResultats(section, {
-        dep: poignées[0].valeur(),
-        rec: poignées[1].valeur(),
+        dep: poignées[0]!.valeur(),
+        rec: poignées[1]!.valeur(),
         depRéf,
         recRéf,
         pib,
@@ -183,7 +183,7 @@ export function poseSimulateur(): void {
       return retour;
     };
 
-    poignée(`Hypothèse ${annéeHypothèse} — dépenses publiques, en % du PIB`, depRéf, 'rcv-d-trait', 'rcv-d', true);
-    poignée(`Hypothèse ${annéeHypothèse} — recettes publiques, en % du PIB`, recRéf, 'rcv-r-trait', 'rcv-r', false);
+    poignée(`Hypothèse ${annéeHypothèse} — dépenses publiques, en % du PIB`, depRéf!, 'rcv-d-trait', 'rcv-d', true);
+    poignée(`Hypothèse ${annéeHypothèse} — recettes publiques, en % du PIB`, recRéf!, 'rcv-r-trait', 'rcv-r', false);
   }
 }

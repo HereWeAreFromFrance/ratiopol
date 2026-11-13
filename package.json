@@ -6,7 +6,7 @@
   "description": "RatioPol — idées politiques concrètes, France. Site et serveur.",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node --test test/gabarit.test.mjs test/http.test.mjs",
+    "test": "node build.mjs && tsc --noEmit && node --test test/gabarit.test.mjs test/http.test.mjs",
     "test:pg": "RP_PG_URL=postgres://localhost/ratiopol_test node build.mjs && node --test test/",
     "migrer": "node base/migrate.mjs"
   },

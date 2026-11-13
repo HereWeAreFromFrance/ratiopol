@@ -87,8 +87,8 @@ export class DepotMemoire implements Depot {
   }
 
   async signale(slug: string, motif: string, message: string): Promise<void> {
-    const idee = this.idees.find((i) => i.slug === slug);
-    if (!idee) throw new Error('idée inconnue');
+    const idee = this.idees.find((i) => i.slug === slug && i.statut === 'publiee');
+    if (!idee) throw new Error('idée inconnue ou masquée');
     this.signalements.push({
       id: this.idSignalementSuivant++,
       ideeId: idee.id,
